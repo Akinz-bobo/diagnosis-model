@@ -93,15 +93,15 @@ export default function DiagnosisPage() {
   });
 
   // Check authentication on component mount
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/signin");
-    } else {
-      setIsAuthenticated(true);
-    }
-    setIsAuthChecking(false);
-  }, [router]);
+  // useEffect(() => {
+  //   const token = localStorage.getItem("token");
+  //   if (!token) {
+  //     router.push("/signin");
+  //   } else {
+  //     setIsAuthenticated(true);
+  //   }
+  //   setIsAuthChecking(false);
+  // }, [router]);
 
   // Handle image selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
