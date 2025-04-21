@@ -96,6 +96,7 @@ export default function DiagnosisPage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
+      //change this settings later
       router.push("/signin");
     } else {
       setIsAuthenticated(true);
