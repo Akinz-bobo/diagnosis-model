@@ -69,8 +69,6 @@ interface DiagnosisResult {
 
 export default function DiagnosisPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   const { user } = useAuth();
 
@@ -201,19 +199,6 @@ export default function DiagnosisPage() {
     } finally {
       setIsLoading(false);
     }
-  }
-
-  if (isAuthChecking) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
-        <p className="mt-4 text-muted-foreground">Checking authentication...</p>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null; // Will redirect to signin page via useEffect
   }
 
   return (
