@@ -5,10 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { useAuth } from "@/hooks/auth-context";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
+
+  const { user, logout } = useAuth();
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -46,14 +49,26 @@ export default function Navbar() {
             Diagnosis
           </Link>
         </nav>
-        <div className="hidden md:flex items-center gap-4">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/signin">Sign In</Link>
-          </Button>
-          <Button asChild size="sm" className="bg-teal-600 hover:bg-teal-700">
-            <Link href="/signup">Sign Up</Link>
-          </Button>
-        </div>
+        {!user ? (
+          <div className="hidden md:flex items-center gap-4">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/signin">Sign In</Link>
+            </Button>
+            <Button asChild size="sm" className="bg-teal-600 hover:bg-teal-700">
+              <Link href="/signup">Sign Up</Link>
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <Button
+              className="bg-teal-600 hover:bg-teal-700"
+              size="sm"
+              onClick={() => logout()}
+            >
+              Logout
+            </Button>
+          </div>
+        )}
         <button
           className="flex md:hidden"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -87,22 +102,37 @@ export default function Navbar() {
             >
               Diagnosis
             </Link>
-            <div className="flex flex-col gap-2 mt-2">
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/signin" onClick={() => setIsMenuOpen(false)}>
-                  Sign In
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="sm"
-                className="bg-teal-600 hover:bg-teal-700"
-              >
-                <Link href="/signup" onClick={() => setIsMenuOpen(false)}>
-                  Sign Up
-                </Link>
-              </Button>
-            </div>
+            {!user ? (
+              <div className="flex flex-col gap-2 mt-2">
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/signin" onClick={() => setIsMenuOpen(false)}>
+                    Sign In
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-teal-600 hover:bg-teal-700"
+                >
+                  <Link href="/signup" onClick={() => setIsMenuOpen(false)}>
+                    Sign Up
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <Button
+                  className="bg-teal-600 hover:bg-teal-700"
+                  size="sm"
+                  onClick={() => {
+                    logout();
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  Logout
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}

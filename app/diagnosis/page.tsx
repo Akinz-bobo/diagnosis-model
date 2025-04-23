@@ -36,6 +36,7 @@ import { Loader2, X, Upload, AlertCircle } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAuth } from "@/hooks/auth-context";
 
 // Define the form schema with Zod
 const historySchema = z.object({
@@ -70,6 +71,8 @@ export default function DiagnosisPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  const { user } = useAuth();
 
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
@@ -170,40 +173,23 @@ export default function DiagnosisPage() {
     setDiagnosisResult(null);
 
     try {
-      const token =
-        localStorage.getItem("token") ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzQ0ODA3NzA2fQ.cyzy2sh2n58Fr8BWeJ4xxUNp2M2qAkFMsQl050HsRko";
-      const tokenType = localStorage.getItem("token_type") || "bearer";
-
-      if (!token) {
-        throw new Error("You are not authenticated. Please sign in.");
-      }
-
-      // Create a FormData object to send multipart/form-data
+      // Prepare the form data
       const formData = new FormData();
-
-      // Append each image to the FormData
       selectedImages.forEach((image) => {
         formData.append("images", image);
       });
-
-      // Append the history data as a JSON string
       formData.append("history", JSON.stringify(data));
 
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_API_BASE_URL + "/api/v1/diagnosis/predict",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `${tokenType} ${token}`,
-          },
-          body: formData,
-        }
-      );
+      // Send request to internal API route
+      const response = await fetch("/api/diagnosis/predict", {
+        method: "POST",
+        body: formData,
+        credentials: "include", // Required to send cookies
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to get diagnosis");
+        throw new Error(errorData?.message || "Failed to get diagnosis");
       }
 
       const result = await response.json();

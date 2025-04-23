@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
+import { useAuth } from "@/hooks/auth-context";
 
 // Define the form schema with Zod
 const signinSchema = z.object({
@@ -31,6 +32,7 @@ type SigninFormValues = z.infer<typeof signinSchema>;
 export default function SigninPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
   const { toast } = useToast();
 
   // Initialize the form
@@ -43,40 +45,78 @@ export default function SigninPage() {
   });
 
   // Handle form submission
+  // async function onSubmit(data: SigninFormValues) {
+  //   setIsLoading(true);
+
+  //   try {
+  //     const response = await fetch(
+  //       process.env.NEXT_PUBLIC_API_BASE_URL + "/api/v1/auth/login",
+  //       {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify(data),
+  //       }
+  //     );
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(errorData.message || "Invalid email or password");
+  //     }
+
+  //     const { access_token, token_type } = await response.json();
+
+  //     // Store the token in localStorage
+  //     localStorage.setItem("token", access_token);
+  //     localStorage.setItem("token_type", token_type);
+
+  //     toast({
+  //       title: "Success!",
+  //       description: "You have successfully signed in.",
+  //       variant: "default",
+  //     });
+
+  //     // Redirect to the diagnosis page
+  //     router.push("/diagnosis");
+  //   } catch (error) {
+  //     console.error("Signin error:", error);
+  //     toast({
+  //       title: "Error",
+  //       description:
+  //         error instanceof Error
+  //           ? error.message
+  //           : "Failed to sign in. Please try again.",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // }
+
   async function onSubmit(data: SigninFormValues) {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_API_BASE_URL + "/api/v1/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        }
-      );
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Invalid email or password");
+        const error = await response.json();
+        throw new Error(error.error || "Invalid email or password");
       }
 
-      const { access_token, token_type } = await response.json();
-
-      // Store the token in localStorage
-      localStorage.setItem("token", access_token);
-      localStorage.setItem("token_type", token_type);
+      const { access_token } = await response.json();
+      await login(access_token);
 
       toast({
         title: "Success!",
         description: "You have successfully signed in.",
         variant: "default",
       });
-
-      // Redirect to the diagnosis page
-      router.push("/diagnosis");
     } catch (error) {
       console.error("Signin error:", error);
       toast({
