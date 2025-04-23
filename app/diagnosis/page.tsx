@@ -95,7 +95,7 @@ export default function DiagnosisPage() {
   // Check authentication on component mount
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
+    if (!token) {
       //change this settings later
       router.push("/signin");
     } else {

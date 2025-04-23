@@ -1,8 +1,14 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Microscope, Shield, ImageIcon, FileText, ArrowRight } from "lucide-react"
-import Navbar from "@/components/navbar"
-import Footer from "@/components/footer"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Microscope,
+  Shield,
+  ImageIcon,
+  FileText,
+  ArrowRight,
+} from "lucide-react";
+import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
 
 export default function Home() {
   return (
@@ -18,10 +24,15 @@ export default function Home() {
                   Advanced Veterinary Diagnosis with AI
                 </h1>
                 <p className="text-lg text-muted-foreground md:text-xl max-w-[600px]">
-                  Combine post-mortem images and clinical history for accurate disease diagnosis with confidence scores.
+                  Combine pathology images and clinical history for accurate
+                  disease diagnosis with medical reports.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button asChild size="lg" className="bg-teal-600 hover:bg-teal-700">
+                  <Button
+                    asChild
+                    size="lg"
+                    className="bg-teal-600 hover:bg-teal-700"
+                  >
                     <Link href="/signup">Get Started</Link>
                   </Button>
                   <Button asChild variant="outline" size="lg">
@@ -32,7 +43,7 @@ export default function Home() {
               <div className="relative lg:ml-auto">
                 <div className="relative h-[350px] w-full overflow-hidden rounded-lg bg-muted">
                   <img
-                    src="/placeholder.svg?height=700&width=700"
+                    src="/heroimg.jpg"
                     alt="Veterinary Diagnosis"
                     className="object-cover w-full h-full"
                   />
@@ -46,9 +57,12 @@ export default function Home() {
         <section className="py-16 md:py-24">
           <div className="container px-4 md:px-6">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-heading font-bold tracking-tighter md:text-4xl">How eVet Helps You</h2>
+              <h2 className="text-3xl font-heading font-bold tracking-tighter md:text-4xl">
+                How Deleke AI Helps You
+              </h2>
               <p className="mt-4 text-muted-foreground md:text-lg">
-                Our AI-powered platform provides accurate diagnosis to help you make informed decisions.
+                Our AI-powered platform provides accurate diagnosis to help you
+                make informed decisions.
               </p>
             </div>
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
@@ -58,7 +72,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Accurate Diagnosis</h3>
                 <p className="text-muted-foreground">
-                  Our AI model combines image analysis and clinical history for precise results.
+                  Our AI model combines image analysis and clinical history for
+                  precise results.
                 </p>
               </div>
               <div className="flex flex-col items-center text-center p-6 bg-background rounded-lg shadow-sm border">
@@ -67,7 +82,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Secure Storage</h3>
                 <p className="text-muted-foreground">
-                  All images are securely stored in our S3 bucket for future reference.
+                  All images and data are securely stored for future reference.
                 </p>
               </div>
               <div className="flex flex-col items-center text-center p-6 bg-background rounded-lg shadow-sm border">
@@ -76,7 +91,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Image Analysis</h3>
                 <p className="text-muted-foreground">
-                  Upload and analyze post-mortem images to identify disease patterns.
+                  Upload and analyze pathology images to identify disease
+                  patterns.
                 </p>
               </div>
               <div className="flex flex-col items-center text-center p-6 bg-background rounded-lg shadow-sm border">
@@ -85,7 +101,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Detailed Reports</h3>
                 <p className="text-muted-foreground">
-                  Get comprehensive reports with diagnosis confidence and background information.
+                  Get comprehensive medical reports with accurate diagnosis and
+                  recommendation.
                 </p>
               </div>
             </div>
@@ -96,9 +113,12 @@ export default function Home() {
         <section className="py-16 md:py-24 bg-slate-50 dark:bg-slate-900">
           <div className="container px-4 md:px-6">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-heading font-bold tracking-tighter md:text-4xl">How It Works</h2>
+              <h2 className="text-3xl font-heading font-bold tracking-tighter md:text-4xl">
+                How It Works
+              </h2>
               <p className="mt-4 text-muted-foreground md:text-lg">
-                Simple steps to get an accurate diagnosis for your veterinary cases.
+                Simple steps to get an accurate diagnosis for your veterinary
+                cases.
               </p>
             </div>
             <div className="grid gap-8 md:grid-cols-3">
@@ -108,16 +128,20 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Upload Images</h3>
                 <p className="text-muted-foreground">
-                  Upload one or more post-mortem images for analysis by our AI system.
+                  Upload one or more pathology images for analysis by our AI
+                  system.
                 </p>
               </div>
               <div className="relative flex flex-col items-center text-center p-6">
                 <div className="flex items-center justify-center w-12 h-12 rounded-full bg-teal-600 text-white font-bold text-xl mb-4">
                   2
                 </div>
-                <h3 className="text-xl font-bold mb-2">Enter Clinical History</h3>
+                <h3 className="text-xl font-bold mb-2">
+                  Enter Clinical History
+                </h3>
                 <p className="text-muted-foreground">
-                  Provide detailed clinical history including species, age, and symptoms.
+                  Provide detailed clinical history including species, age, and
+                  symptoms.
                 </p>
               </div>
               <div className="relative flex flex-col items-center text-center p-6">
@@ -126,7 +150,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Get Diagnosis</h3>
                 <p className="text-muted-foreground">
-                  Receive an accurate diagnosis with confidence score and background information.
+                  Receive an accurate diagnosis with clinical reports and
+                  recommendation.
                 </p>
               </div>
             </div>
@@ -141,9 +166,14 @@ export default function Home() {
                 Ready to Transform Your Veterinary Diagnosis?
               </h2>
               <p className="text-muted-foreground md:text-lg">
-                Join eVet today and leverage the power of AI for accurate disease diagnosis.
+                Join Deleke AI today and leverage the power of AI for accurate
+                disease diagnosis.
               </p>
-              <Button asChild size="lg" className="mt-4 bg-teal-600 hover:bg-teal-700">
+              <Button
+                asChild
+                size="lg"
+                className="mt-4 bg-teal-600 hover:bg-teal-700"
+              >
                 <Link href="/signup" className="flex items-center gap-2">
                   Get Started <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -154,5 +184,5 @@ export default function Home() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }
