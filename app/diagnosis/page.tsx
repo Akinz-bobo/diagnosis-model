@@ -95,18 +95,6 @@ export default function DiagnosisPage() {
     },
   });
 
-  // Check authentication on component mount
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      //change this settings later
-      router.push("/signin");
-    } else {
-      setIsAuthenticated(true);
-    }
-    setIsAuthChecking(false);
-  }, [router]);
-
   // Handle image selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
