@@ -111,6 +111,7 @@ export default function SigninPage() {
 
       const { access_token } = await response.json();
       await login(access_token);
+      router.push("/diagnosis");
 
       toast({
         title: "Success!",
