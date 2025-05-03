@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -32,7 +32,7 @@ type SigninFormValues = z.infer<typeof signinSchema>;
 export default function SigninPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const { toast } = useToast();
 
   // Initialize the form
@@ -43,6 +43,12 @@ export default function SigninPage() {
       password: "",
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      router.push("/diagnosis"); // Redirect if already logged in
+    }
+  }, [user, router]);
 
   // Handle form submission
   // async function onSubmit(data: SigninFormValues) {
