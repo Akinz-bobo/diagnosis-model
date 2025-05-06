@@ -32,7 +32,7 @@ type SigninFormValues = z.infer<typeof signinSchema>;
 export default function SigninPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
 
   // Initialize the form
@@ -43,12 +43,6 @@ export default function SigninPage() {
       password: "",
     },
   });
-
-  useEffect(() => {
-    if (user) {
-      router.push("/diagnosis"); // Redirect if already logged in
-    }
-  }, [user, router]);
 
   // Handle form submission
   // async function onSubmit(data: SigninFormValues) {

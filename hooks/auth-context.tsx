@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (res.ok) {
       const userData = await res.json();
       setUser(userData);
-      router.push("/diagnosis");
+      // router.push("/diagnosis");
     } else {
       throw new Error("Invalid login or session expired");
     }
