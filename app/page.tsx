@@ -58,7 +58,7 @@ export default function Home() {
           <div className="container px-4 md:px-6">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-heading font-bold tracking-tighter md:text-4xl">
-                How Deleke AI Helps You
+                How Vetable AI Helps You
               </h2>
               <p className="mt-4 text-muted-foreground md:text-lg">
                 Our AI-powered platform provides accurate diagnosis to help you
@@ -166,7 +166,7 @@ export default function Home() {
                 Ready to Transform Your Veterinary Diagnosis?
               </h2>
               <p className="text-muted-foreground md:text-lg">
-                Join Deleke AI today and leverage the power of AI for accurate
+                Join Vetable AI today and leverage the power of AI for accurate
                 disease diagnosis.
               </p>
               <Button

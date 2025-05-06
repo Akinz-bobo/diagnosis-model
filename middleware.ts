@@ -18,7 +18,7 @@ export function middleware(req: NextRequest) {
     const decoded = decodeJwt(token);
     console.log("Decoded JWT:", {
       decoded,
-      is_expired: decoded?.exp * 1000 < Date.now(),
+      is_expired: decoded?.exp! * 1000 < Date.now(),
     });
 
     if (!decoded || decoded.exp * 1000 < Date.now()) {

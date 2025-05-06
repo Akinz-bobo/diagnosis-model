@@ -8,7 +8,7 @@ export default function Footer() {
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2">
               <span className="font-heading text-2xl font-bold text-teal-600 dark:text-teal-500">
-                Deleke AI
+                Vetable AI
               </span>
             </Link>
             <p className="text-sm text-muted-foreground">
@@ -81,7 +81,7 @@ export default function Footer() {
         </div>
         <div className="mt-8 border-t pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Deleke AI. All rights reserved.
+            &copy; {new Date().getFullYear()} Vetable AI. All rights reserved.
           </p>
         </div>
       </div>

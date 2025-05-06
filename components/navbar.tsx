@@ -23,7 +23,7 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
             <span className="font-heading text-2xl font-bold text-teal-600 dark:text-teal-500">
-              Deleke AI
+              Vetable AI
             </span>
           </Link>
         </div>
