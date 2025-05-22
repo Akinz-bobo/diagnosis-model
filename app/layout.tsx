@@ -1,10 +1,13 @@
 import type React from "react";
 import { Mona_Sans as FontSans } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/hooks/auth-context";
+import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
 import "./globals.css";
 import type { Metadata } from "next";
+import { AuthProvider } from "@/hooks/auth-context";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -25,13 +28,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${fontSans.variable} font-sans`}>
-        <AuthProvider>
-          <ThemeProvider attribute="class" defaultTheme="light">
-            {children}
+      <body
+        className={`${fontSans.variable}  font-sans min-h-screen flex flex-col`}
+      >
+        <ThemeProvider attribute="class" defaultTheme="light">
+          <AuthProvider>
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
             <Toaster />
-          </ThemeProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

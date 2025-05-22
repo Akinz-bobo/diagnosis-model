@@ -24,12 +24,12 @@ module.exports = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "hsl(220 100% 18%)", // Deep Blue
+          foreground: "hsl(210 40% 98%)",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "hsl(201 100% 61%)", // Light Blue
+          foreground: "hsl(222.2 47.4% 11.2%)",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -52,17 +52,17 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
         teal: {
-          50: "#f0fdfa",
-          100: "#ccfbf1",
-          200: "#99f6e4",
-          300: "#5eead4",
-          400: "#2dd4bf",
-          500: "#14b8a6",
-          600: "#0d9488",
-          700: "#0f766e",
-          800: "#115e59",
-          900: "#134e4a",
-          950: "#042f2e",
+          50: "#f2f8fd", // very light blue
+          100: "#d5eafb",
+          200: "#a9d5f7",
+          300: "#7dc0f3",
+          400: "#51abef",
+          500: "#2b95ea", // light brand blue base
+          600: "#1978c5",
+          700: "#155f9c",
+          800: "#114873",
+          900: "#0c3250",
+          950: "#081f34", // near-black blue
         },
       },
       borderRadius: {
@@ -91,4 +91,4 @@ module.exports = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
+};

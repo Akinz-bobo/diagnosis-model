@@ -16,16 +16,15 @@ export function middleware(req: NextRequest) {
 
   if (token) {
     const decoded = decodeJwt(token);
-    console.log("Decoded JWT:", {
-      decoded,
-      is_expired: decoded?.exp! * 1000 < Date.now(),
-    });
+    const isExpired = !decoded || decoded.exp * 1000 < Date.now();
 
-    if (!decoded || decoded.exp * 1000 < Date.now()) {
-      // Token is expired, redirect to /signin gracefully
+    if (isExpired) {
+      // Remove the expired token cookie and redirect to /signin
       const signInUrl = new URL("/signin", req.url);
       signInUrl.searchParams.set("expired", "1");
-      return NextResponse.redirect(signInUrl);
+      const res = NextResponse.redirect(signInUrl);
+      res.cookies.set("token", "", { maxAge: 0, path: "/" }); // Remove cookie
+      return res;
     }
 
     // Authenticated users shouldn't visit /signin or /signup

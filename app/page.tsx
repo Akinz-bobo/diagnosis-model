@@ -7,13 +7,11 @@ import {
   FileText,
   ArrowRight,
 } from "lucide-react";
-import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative py-20 md:py-28 bg-gradient-to-b from-teal-50 to-white dark:from-slate-950 dark:to-slate-900">
@@ -182,7 +180,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <Footer />
     </div>
   );
 }

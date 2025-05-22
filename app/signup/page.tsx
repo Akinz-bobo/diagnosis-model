@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 
 // Define the form schema with Zod
@@ -101,7 +100,6 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
       <main className="flex-1 flex items-center justify-center py-12 px-4 md:px-6">
         <div className="mx-auto w-full max-w-md space-y-6">
           <div className="space-y-2 text-center">
