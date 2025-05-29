@@ -13,6 +13,7 @@ function decodeJwt(token: string): { exp: number } | null {
 
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("token")?.value;
+  console.log("Token from cookies:", token);
 
   if (token) {
     const decoded = decodeJwt(token);
