@@ -32,7 +32,7 @@ type SigninFormValues = z.infer<typeof signinSchema>;
 export default function SigninPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { setAuthToken } = useAuth();
   const { toast } = useToast();
 
   // Initialize the form
@@ -110,7 +110,9 @@ export default function SigninPage() {
       }
 
       const { access_token } = await response.json();
-      await login(access_token);
+      console.log("Access token:", access_token);
+      setAuthToken(access_token);
+      // await login(access_token);
       router.push("/diagnosis");
 
       toast({

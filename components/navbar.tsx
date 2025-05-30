@@ -11,12 +11,14 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
 
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
 
   const isActive = (path: string) => {
     return pathname === path;
   };
 
+  console.log("User:", user);
+  console.log("Token:", token);
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -49,7 +51,7 @@ export default function Navbar() {
             Diagnosis
           </Link>
         </nav>
-        {!user ? (
+        {!token ? (
           <div className="hidden md:flex items-center gap-4">
             <Button asChild variant="ghost" size="sm">
               <Link href="/signin">Sign In</Link>

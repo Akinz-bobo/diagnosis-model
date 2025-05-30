@@ -69,9 +69,6 @@ interface DiagnosisResult {
 
 export default function DiagnosisPage() {
   const [isLoading, setIsLoading] = useState(false);
-
-  const { user } = useAuth();
-
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [diagnosisResult, setDiagnosisResult] =
@@ -79,6 +76,21 @@ export default function DiagnosisPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const { token } = useAuth();
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Check if the user is authenticated
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to access the diagnosis feature.",
+          variant: "destructive",
+        });
+        router.push("/signin");
+      }
+    }
+  }, [token]);
   // Initialize the form
   const form = useForm<HistoryFormValues>({
     resolver: zodResolver(historySchema),
@@ -200,7 +212,13 @@ export default function DiagnosisPage() {
       setIsLoading(false);
     }
   }
-
+  if (!token) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mt-20 text-primary" />;
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />

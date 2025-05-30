@@ -29,5 +29,5 @@ export async function POST(req: Request) {
     path: "/",
   });
 
-  return NextResponse.json({ message: "Logged in" });
+  return NextResponse.json({ message: "Logged in", access_token });
 }
