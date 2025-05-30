@@ -40,48 +40,33 @@ import {
   Share2,
   ArrowRight,
 } from "lucide-react";
-
+import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SpecialistContactModal } from "@/components/diagnosis/specialist-contact-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/auth-context";
 
 // Define the form schema with Zod
-const historySchema = z
-  .object({
-    Species: z.string().min(1, { message: "Species is required" }),
-    Age: z.string().min(1, { message: "Age is required" }),
-    "Clinical Signs": z
-      .string()
-      .min(1, { message: "Clinical signs are required" }),
-    "Post-Mortem Findings": z
-      .string()
-      .min(1, { message: "Post-mortem findings are required" }),
-    "Total Birds in Farm": z.coerce
-      .number()
-      .min(1, { message: "Total birds must be at least 1" }),
-    "Total Affected": z.coerce
-      .number()
-      .min(1, { message: "Total affected must be at least 1" }),
-    "Total Deaths": z.coerce
-      .number()
-      .min(1, { message: "Total deaths must be at least 1" }),
-  })
-  .refine((data) => data["Total Affected"] <= data["Total Birds in Farm"], {
-    message: "Total affected must not be greater than total birds in farm",
-    path: ["Total Affected"],
-  })
-  .refine(
-    (data) =>
-      data["Total Deaths"] <= data["Total Birds in Farm"] &&
-      data["Total Deaths"] <= data["Total Affected"],
-    {
-      message:
-        "Total death must not be greater than total affected and total birds in farm",
-      path: ["Total Deaths"],
-    }
-  );
+const historySchema = z.object({
+  Species: z.string().min(1, { message: "Species is required" }),
+  Age: z.string().min(1, { message: "Age is required" }),
+  "Clinical Signs": z
+    .string()
+    .min(1, { message: "Clinical signs are required" }),
+  "Post-Mortem Findings": z
+    .string()
+    .min(1, { message: "Post-mortem findings are required" }),
+  "Total Birds in Farm": z.coerce
+    .number()
+    .min(1, { message: "Total birds must be at least 1" }),
+  "Total Affected": z.coerce
+    .number()
+    .min(0, { message: "Total affected must be a positive number" }),
+  "Total Deaths": z.coerce
+    .number()
+    .min(0, { message: "Total deaths must be a positive number" }),
+});
 
 type HistoryFormValues = z.infer<typeof historySchema>;
 
@@ -102,17 +87,16 @@ interface ProcessedImage {
 
 export default function DiagnosisPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isSpecialistModalOpen, setIsSpecialistModalOpen] = useState(false);
+
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [diagnosisResult, setDiagnosisResult] =
     useState<DiagnosisResult | null>(null);
   const router = useRouter();
   const { toast } = useToast();
-  const { user, token, loading: authLoading } = useAuth();
-
-  // const accessToken = window.localStorage.getItem("token");
-  // console.log("Access Token:", accessToken);
 
   // Initialize the form
   const form = useForm<HistoryFormValues>({
@@ -128,18 +112,16 @@ export default function DiagnosisPage() {
     },
   });
 
-  // Redirect to signin if not authenticated
+  // Check authentication on component mount
   useEffect(() => {
-    if (!authLoading && !user) {
+    const token = localStorage.getItem("token");
+    if (!token) {
       router.push("/signin");
+    } else {
+      setIsAuthenticated(true);
     }
-  }, [authLoading, user, router]);
-
-  console.log({
-    user,
-    token,
-    authLoading,
-  });
+    setIsAuthChecking(false);
+  }, [router]);
 
   // Handle image selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,51 +189,75 @@ export default function DiagnosisPage() {
     setDiagnosisResult(null);
 
     try {
+      const token = localStorage.getItem("token");
+      const tokenType = localStorage.getItem("token_type") || "bearer";
+
       if (!token) {
         throw new Error("You are not authenticated. Please sign in.");
       }
 
-      // Construct the FormData payload
+      // Create a FormData object to send multipart/form-data
       const formData = new FormData();
 
-      // Append images
+      // Append each image to the FormData
       selectedImages.forEach((image) => {
         formData.append("images", image);
       });
 
-      // Append required clinical history fields
-      formData.append("Species", data.Species);
-      formData.append("Age", data.Age.toString());
-      formData.append("Clinical Signs", data["Clinical Signs"]);
-      formData.append(
-        "Post-Mortem Findings",
-        data["Post-Mortem Findings"] || ""
-      );
-      formData.append(
-        "Total Birds in Farm",
-        data["Total Birds in Farm"].toString()
-      );
-      formData.append("Total Affected", data["Total Affected"].toString());
-      formData.append("Total Deaths", data["Total Deaths"].toString());
+      // Append the history data as a JSON string
+      formData.append("history", JSON.stringify(data));
 
-      // Send the request to internal API route
-      const res = await fetch("/api/diagnosis/predict", {
-        method: "POST",
-        body: formData,
-      });
+      // In a real app, this would be an actual API call
+      // For now, simulate a response with mock data
+      setTimeout(() => {
+        // Mock response with enhanced data
+        const mockResult: DiagnosisResult = {
+          predicted_class: "Avian Influenza",
+          confidence: 0.92,
+          gpt_background:
+            "Avian influenza, commonly known as bird flu, is a highly contagious viral infection that affects birds. The disease is caused by influenza A viruses. These viruses can infect domestic poultry, including chickens, ducks, and turkeys, as well as wild birds. The symptoms include respiratory distress, decreased egg production, swollen head, and high mortality rates.",
+          processed_images: [
+            {
+              url:
+                imagePreviewUrls[0] || "/placeholder.svg?height=300&width=400",
+              lesions: [
+                "Hemorrhagic tracheitis",
+                "Airsacculitis with fibrinous exudate",
+                "Congested lungs",
+              ],
+              relevance:
+                "These respiratory lesions are highly consistent with Avian Influenza, particularly the hemorrhagic inflammation of the trachea which is a hallmark of HPAI.",
+            },
+            {
+              url:
+                imagePreviewUrls[1] || "/placeholder.svg?height=300&width=400",
+              lesions: [
+                "Petechial hemorrhages on serosal surfaces",
+                "Enlarged, mottled spleen",
+                "Necrotic pancreas",
+              ],
+              relevance:
+                "The systemic hemorrhages and pancreatic necrosis are characteristic of Highly Pathogenic Avian Influenza (HPAI), supporting the primary diagnosis.",
+            },
+          ],
+          differential_diagnoses: [
+            "Newcastle Disease",
+            "Infectious Laryngotracheitis",
+            "Acute Fowl Cholera",
+          ],
+          conclusion:
+            "Based on the clinical history and lesions observed, this case presents with classic signs of Highly Pathogenic Avian Influenza. The combination of respiratory and systemic lesions, particularly the hemorrhagic tracheitis and pancreatic necrosis, strongly supports this diagnosis. However, laboratory confirmation through PCR or virus isolation is recommended for definitive diagnosis.",
+        };
 
-      const result = await res.json();
+        setDiagnosisResult(mockResult);
+        setIsLoading(false);
 
-      if (!res.ok) {
-        throw new Error(result.message || "Diagnosis failed");
-      }
-
-      setDiagnosisResult(result);
-      toast({
-        title: "Diagnosis Complete",
-        description: "Your diagnosis has been successfully processed.",
-        variant: "default",
-      });
+        toast({
+          title: "Diagnosis Complete",
+          description: "Your diagnosis has been successfully processed.",
+          variant: "default",
+        });
+      }, 2000); // Simulate network delay
     } catch (error) {
       console.error("Diagnosis error:", error);
       toast({
@@ -262,12 +268,11 @@ export default function DiagnosisPage() {
             : "Failed to get diagnosis. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   }
 
-  if (authLoading) {
+  if (isAuthChecking) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
@@ -276,7 +281,7 @@ export default function DiagnosisPage() {
     );
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return null; // Will redirect to signin page via useEffect
   }
 

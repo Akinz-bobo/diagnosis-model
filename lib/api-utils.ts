@@ -26,21 +26,33 @@ export function handleApiError(error: unknown): string {
   return "An unknown error occurred";
 }
 
+// Helper to safely get token from localStorage (only on client)
+function getTokenAndType() {
+  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    const token = localStorage.getItem("token");
+    const tokenType = localStorage.getItem("token_type") || "bearer";
+    return { token, tokenType };
+  }
+  return { token: null, tokenType: "bearer" };
+}
+
 // Generic GET request function
 export async function get<T>(endpoint: string): Promise<T> {
   try {
-    const token = localStorage.getItem("token");
-    const tokenType = localStorage.getItem("token_type") || "bearer";
+    const { token, tokenType } = getTokenAndType();
 
     const headers: HeadersInit = {};
     if (token) {
       headers["Authorization"] = `${tokenType} ${token}`;
     }
 
-    const response = await fetch(`/api${endpoint}`, {
-      method: "GET",
-      headers,
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api${endpoint}`,
+      {
+        method: "GET",
+        headers,
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -60,8 +72,7 @@ export async function get<T>(endpoint: string): Promise<T> {
 // Generic POST request function
 export async function post<T>(endpoint: string, data: any): Promise<T> {
   try {
-    const token = localStorage.getItem("token");
-    const tokenType = localStorage.getItem("token_type") || "bearer";
+    const { token, tokenType } = getTokenAndType();
 
     const headers: HeadersInit = {
       "Content-Type": "application/json",
@@ -71,11 +82,14 @@ export async function post<T>(endpoint: string, data: any): Promise<T> {
       headers["Authorization"] = `${tokenType} ${token}`;
     }
 
-    const response = await fetch(`/api${endpoint}`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(data),
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api${endpoint}`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(data),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -95,8 +109,7 @@ export async function post<T>(endpoint: string, data: any): Promise<T> {
 // Generic PUT request function
 export async function put<T>(endpoint: string, data: any): Promise<T> {
   try {
-    const token = localStorage.getItem("token");
-    const tokenType = localStorage.getItem("token_type") || "bearer";
+    const { token, tokenType } = getTokenAndType();
 
     const headers: HeadersInit = {
       "Content-Type": "application/json",
@@ -106,11 +119,14 @@ export async function put<T>(endpoint: string, data: any): Promise<T> {
       headers["Authorization"] = `${tokenType} ${token}`;
     }
 
-    const response = await fetch(`/api${endpoint}`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify(data),
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api${endpoint}`,
+      {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(data),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -130,18 +146,20 @@ export async function put<T>(endpoint: string, data: any): Promise<T> {
 // Generic DELETE request function
 export async function del<T>(endpoint: string): Promise<T> {
   try {
-    const token = localStorage.getItem("token");
-    const tokenType = localStorage.getItem("token_type") || "bearer";
+    const { token, tokenType } = getTokenAndType();
 
     const headers: HeadersInit = {};
     if (token) {
       headers["Authorization"] = `${tokenType} ${token}`;
     }
 
-    const response = await fetch(`/api${endpoint}`, {
-      method: "DELETE",
-      headers,
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api${endpoint}`,
+      {
+        method: "DELETE",
+        headers,
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

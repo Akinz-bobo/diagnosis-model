@@ -11,7 +11,7 @@ interface UserRoleGateProps {
 export function UserRoleGate({ children, allowedRoles }: UserRoleGateProps) {
   const user = useCurrentUser();
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!user || !allowedRoles.includes(user.user?.role || "")) {
     return null;
   }
 

@@ -13,7 +13,9 @@ export const useCurrentUser = () => {
     // Simulate fetching user data
     const fetchUser = async () => {
       try {
-        const response = await fetch("/api/v1/auth/me");
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/me`
+        );
         if (!response.ok) throw new Error("Failed to fetch user");
         const data: User = await response.json();
         setUser(data);

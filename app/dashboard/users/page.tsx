@@ -10,11 +10,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { Plus } from "lucide-react";
 
 export default async function UsersPage() {
-  const user = await getCurrentUser();
+  // const user = await getCurrentUser();
 
-  if (!user || user.role !== "admin") {
-    redirect("/dashboard");
-  }
+  // if (!user || user.role !== "admin") {
+  //   redirect("/dashboard");
+  // }
 
   const users = await getUsers();
 

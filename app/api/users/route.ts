@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
     const newUser: User = {
       id: `user-${Date.now()}`,
       email: data.email,
+      image: data.image || "https://placeholder.com/150",
       full_name: data.full_name,
       role: data.role || "user",
       emailVerified: data.emailVerified || false,

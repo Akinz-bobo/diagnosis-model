@@ -8,6 +8,7 @@ import {
   useCallback,
 } from "react";
 import { useRouter } from "next/navigation";
+import { getCurrentToken } from "@/lib/auth";
 
 interface AuthContextType {
   user: any;
@@ -19,13 +20,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function getTokenFromStorage() {
-  // Try to get token from localStorage
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("token");
-  }
-  return null;
-}
+
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
@@ -35,9 +30,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Sync token from localStorage on mount and on storage change (multi-tab)
   useEffect(() => {
-    const syncToken = () => {
-      const t = getTokenFromStorage();
-      setToken(t);
+    const syncToken = async() => {
+    const token = await getCurrentToken();;
+      setToken(token);
     };
     syncToken();
     window.addEventListener("storage", syncToken);
@@ -80,7 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setToken(newToken);
     localStorage.setItem("token", newToken);
     // Optionally, set cookie here if backend does not do it
-    // document.cookie = `token=${newToken}; path=/;`;
+    document.cookie = `token=${newToken}; path=/;`;
     // Fetch user will run due to token change
   }, []);
 
