@@ -11,14 +11,12 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
 
-  const { user, logout, token } = useAuth();
+  const { user, logout } = useAuth();
 
   const isActive = (path: string) => {
     return pathname === path;
   };
 
-  console.log("User:", user);
-  console.log("Token:", token);
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -51,7 +49,7 @@ export default function Navbar() {
             Diagnosis
           </Link>
         </nav>
-        {!token ? (
+        {!user ? (
           <div className="hidden md:flex items-center gap-4">
             <Button asChild variant="ghost" size="sm">
               <Link href="/signin">Sign In</Link>
@@ -71,17 +69,19 @@ export default function Navbar() {
             </Button>
           </div>
         )}
-        <button
-          className="flex md:hidden"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {isMenuOpen ? (
-            <X className="h-6 w-6" />
-          ) : (
-            <Menu className="h-6 w-6" />
-          )}
-        </button>
+        {!user && (
+          <button
+            className="flex md:hidden"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </button>
+        )}
       </div>
       {isMenuOpen && (
         <div className="md:hidden border-b">

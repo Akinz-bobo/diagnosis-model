@@ -13,22 +13,17 @@ function decodeJwt(token: string): { exp: number } | null {
 
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("token")?.value;
-  console.log("Token from cookies:", token);
+  const isDiagnosisRoute = req.nextUrl.pathname.startsWith("/diagnosis");
 
   if (token) {
     const decoded = decodeJwt(token);
-    console.log("Decoded JWT:", {
-      decoded,
-      is_expired: decoded?.exp! * 1000 < Date.now(),
-    });
-
-    if (!decoded || decoded.exp * 1000 < Date.now()) {
-      // Token is expired, redirect to /signin gracefully
+    const isExpired = !decoded || decoded.exp * 1000 < Date.now();
+    if (isExpired) {
+      // Token is expired, redirect to /signin
       const signInUrl = new URL("/signin", req.url);
       signInUrl.searchParams.set("expired", "1");
       return NextResponse.redirect(signInUrl);
     }
-
     // Authenticated users shouldn't visit /signin or /signup
     if (
       req.nextUrl.pathname.startsWith("/signin") ||
@@ -36,17 +31,16 @@ export function middleware(req: NextRequest) {
     ) {
       return NextResponse.redirect(new URL("/diagnosis", req.url));
     }
+    // Allow access to /diagnosis if token is valid and not expired
+    return NextResponse.next();
   } else {
     // Not logged in - prevent access to protected routes
-    if (
-      req.nextUrl.pathname.startsWith("/diagnosis") ||
-      req.nextUrl.pathname.startsWith("/admin")
-    ) {
+    if (isDiagnosisRoute || req.nextUrl.pathname.startsWith("/admin")) {
       return NextResponse.redirect(new URL("/signin", req.url));
     }
+    // Allow access to /signin, /signup, etc. for unauthenticated users
+    return NextResponse.next();
   }
-
-  return NextResponse.next();
 }
 
 export const config = {

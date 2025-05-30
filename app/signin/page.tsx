@@ -32,8 +32,8 @@ type SigninFormValues = z.infer<typeof signinSchema>;
 export default function SigninPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setAuthToken } = useAuth();
   const { toast } = useToast();
+  const { login } = useAuth();
 
   // Initialize the form
   const form = useForm<SigninFormValues>({
@@ -43,56 +43,6 @@ export default function SigninPage() {
       password: "",
     },
   });
-
-  // Handle form submission
-  // async function onSubmit(data: SigninFormValues) {
-  //   setIsLoading(true);
-
-  //   try {
-  //     const response = await fetch(
-  //       process.env.NEXT_PUBLIC_API_BASE_URL + "/api/v1/auth/login",
-  //       {
-  //         method: "POST",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: JSON.stringify(data),
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       const errorData = await response.json();
-  //       throw new Error(errorData.message || "Invalid email or password");
-  //     }
-
-  //     const { access_token, token_type } = await response.json();
-
-  //     // Store the token in localStorage
-  //     localStorage.setItem("token", access_token);
-  //     localStorage.setItem("token_type", token_type);
-
-  //     toast({
-  //       title: "Success!",
-  //       description: "You have successfully signed in.",
-  //       variant: "default",
-  //     });
-
-  //     // Redirect to the diagnosis page
-  //     router.push("/diagnosis");
-  //   } catch (error) {
-  //     console.error("Signin error:", error);
-  //     toast({
-  //       title: "Error",
-  //       description:
-  //         error instanceof Error
-  //           ? error.message
-  //           : "Failed to sign in. Please try again.",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // }
 
   async function onSubmit(data: SigninFormValues) {
     setIsLoading(true);
@@ -109,16 +59,13 @@ export default function SigninPage() {
         throw new Error(error.error || "Invalid email or password");
       }
 
-      const { access_token } = await response.json();
-      console.log("Access token:", access_token);
-      setAuthToken(access_token);
-      // await login(access_token);
-      router.push("/diagnosis");
-
-      toast({
-        title: "Success!",
-        description: "You have successfully signed in.",
-        variant: "default",
+      login().then(() => {
+        router.push("/diagnosis");
+        toast({
+          title: "Success!",
+          description: "You have successfully signed in.",
+          variant: "default",
+        });
       });
     } catch (error) {
       console.error("Signin error:", error);

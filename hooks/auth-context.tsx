@@ -6,9 +6,7 @@ import { useRouter } from "next/navigation";
 interface AuthContextType {
   user: any;
   loading: boolean;
-  token: string | null;
-  setAuthToken: (token: string) => void;
-  getAuthToken: () => string | null;
+  login: () => Promise<void>;
   logout: () => void;
 }
 
@@ -17,55 +15,41 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState<string | null>(null);
+
   const router = useRouter();
 
-  // Initialize user on app load (e.g., check session from cookies)
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch("/api/auth/me", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData);
-        }
-      } catch (err) {
-        console.error("Failed to fetch user", err);
-      } finally {
-        setLoading(false);
+  // Fetch user info
+  const fetchUser = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const userData = await res.json();
+        setUser(userData);
+      } else {
+        setUser(null);
       }
-    };
-
-    fetchUser();
-  }, [token]);
-
-  const setAuthToken = (token: string) => {
-    console.log("Setting auth token:", token);
-    setToken(token);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("token", token);
-      setToken(token);
+    } catch (err) {
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getAuthToken = () => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("token");
-    }
-    return null;
+  // Initialize user on app load
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
+  // Call this after successful login
+  const login = async () => {
+    await fetchUser();
   };
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
-      setToken(null);
     }
     setUser(null);
     router.push("/signin");
@@ -76,10 +60,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         user,
         loading,
+        login,
         logout,
-        getAuthToken,
-        token,
-        setAuthToken,
       }}
     >
       {children}
