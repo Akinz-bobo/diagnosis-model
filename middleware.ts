@@ -38,7 +38,6 @@ export function middleware(req: NextRequest) {
     if (isDiagnosisRoute || req.nextUrl.pathname.startsWith("/admin")) {
       return NextResponse.redirect(new URL("/signin", req.url));
     }
-    // Allow access to /signin, /signup, etc. for unauthenticated users
     return NextResponse.next();
   }
 }
