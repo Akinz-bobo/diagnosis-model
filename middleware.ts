@@ -1,51 +1,51 @@
+import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import type { NextMiddleware } from "next/server";
 
-function decodeJwt(token: string): { exp: number } | null {
-  try {
-    const payload = token.split(".")[1];
-    const decoded = JSON.parse(Buffer.from(payload, "base64").toString());
-    return decoded;
-  } catch {
-    return null;
+export const middleware: NextMiddleware = async (req: NextRequest) => {
+  const pathname = req.nextUrl.pathname;
+
+  const token =
+    req.cookies.get("__Secure-next-auth.session-token")?.value ||
+    req.cookies.get("next-auth.session-token")?.value;
+
+  const isAuthPage =
+    pathname.startsWith("/signin") || pathname.startsWith("/signup");
+  const isProtectedPage =
+    pathname.startsWith("/diagnosis") || pathname.startsWith("/admin");
+
+  // Unauthenticated user on protected page
+  if (!token && isProtectedPage) {
+    const loginUrl = new URL("/signin", req.url);
+    loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
   }
-}
 
-export function middleware(req: NextRequest) {
-  const token = req.cookies.get("token")?.value;
-
-  if (token) {
-    const decoded = decodeJwt(token);
-    const isExpired = !decoded || decoded.exp * 1000 < Date.now();
-
-    if (isExpired) {
-      // Remove the expired token cookie and redirect to /signin
-      const signInUrl = new URL("/signin", req.url);
-      signInUrl.searchParams.set("expired", "1");
-      const res = NextResponse.redirect(signInUrl);
-      res.cookies.set("token", "", { maxAge: 0, path: "/" }); // Remove cookie
-      return res;
-    }
-
-    // Authenticated users shouldn't visit /signin or /signup
-    if (
-      req.nextUrl.pathname.startsWith("/signin") ||
-      req.nextUrl.pathname.startsWith("/signup")
-    ) {
-      return NextResponse.redirect(new URL("/diagnosis", req.url));
-    }
-  } else {
-    // Not logged in - prevent access to protected routes
-    if (
-      req.nextUrl.pathname.startsWith("/diagnosis") ||
-      req.nextUrl.pathname.startsWith("/admin")
-    ) {
-      return NextResponse.redirect(new URL("/signin", req.url));
-    }
+  // Authenticated user trying to access auth pages
+  if (token && isAuthPage) {
+    return NextResponse.redirect(new URL("/diagnosis", req.url));
   }
 
   return NextResponse.next();
-}
+};
+
+// For role-based access, use `withAuth` with custom callbacks
+export default withAuth(middleware, {
+  callbacks: {
+    authorized: ({ token, req }) => {
+      const pathname = req.nextUrl.pathname;
+
+      // If accessing admin routes, ensure user is ADMIN
+      if (pathname.startsWith("/admin")) {
+        return token?.role === "ADMIN";
+      }
+
+      // All other authenticated routes
+      return !!token;
+    },
+  },
+});
 
 export const config = {
   matcher: ["/signin", "/signup", "/diagnosis", "/admin/:path*"],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,23 +14,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hooks/auth-context";
+import { signOut, useSession } from "next-auth/react";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { loading, user, logout } = useAuth();
+  const { data: session, status } = useSession();
+  const user = session?.user;
 
-  const isActive = (path: string) => {
-    return pathname === path;
-  };
+  const isActive = (path: string) => pathname === path;
 
   const handleSignOut = async () => {
-    await logout();
-    window.location.href = "/";
+    await signOut({ callbackUrl: "/" });
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null | undefined) => {
     if (!name) return "U";
     const parts = name.split(" ");
     if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
@@ -40,19 +38,28 @@ export default function Navbar() {
   };
 
   const getUserRole = () => {
-    if (!user) return null;
-    if (user.role === "SUPER_ADMIN") return "Super Admin";
-    if (user.role === "ADMIN") return "Admin";
-    if (user.role === "ORGANIZATION") return "Organization";
-    return "User";
+    switch (user?.role) {
+      case "SUPER_ADMIN":
+        return "Super Admin";
+      case "ADMIN":
+        return "Admin";
+      case "ORGANIZATION":
+        return "Organization";
+      default:
+        return "User";
+    }
   };
 
   const getDashboardLink = () => {
-    if (!user) return "/dashboard";
-    if (user.role === "SUPER_ADMIN") return "/dashboard/super-admin";
-    if (user.role === "ADMIN" || user.role === "ORGANIZATION")
-      return "/dashboard";
-    return "/dashboard";
+    switch (user?.role) {
+      case "SUPER_ADMIN":
+        return "/dashboard/super-admin";
+      case "ADMIN":
+      case "ORGANIZATION":
+        return "/dashboard";
+      default:
+        return "/dashboard";
+    }
   };
 
   return (
@@ -118,7 +125,7 @@ export default function Navbar() {
           </Link>
         </nav>
         <div className="hidden md:flex items-center gap-4">
-          {loading ? (
+          {status === "loading" ? (
             <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
           ) : user ? (
             <DropdownMenu>
@@ -130,10 +137,10 @@ export default function Navbar() {
                   <Avatar className="h-8 w-8">
                     <AvatarImage
                       src={user.image || ""}
-                      alt={user.full_name || "User"}
+                      alt={user.name || "User"}
                     />
                     <AvatarFallback className="bg-teal-100 text-teal-800">
-                      {getInitials(user.full_name || "")}
+                      {getInitials(user.name || "")}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -142,7 +149,7 @@ export default function Navbar() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {user.full_name}
+                      {user.name}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
@@ -236,7 +243,7 @@ export default function Navbar() {
             >
               Pricing
             </Link>
-            {loading ? (
+            {status === "loading" ? (
               <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
             ) : user ? (
               <div className="space-y-3 pt-2">
@@ -244,14 +251,14 @@ export default function Navbar() {
                   <Avatar className="h-8 w-8">
                     <AvatarImage
                       src={user.image || ""}
-                      alt={user.full_name || "User"}
+                      alt={user.name || "User"}
                     />
                     <AvatarFallback className="bg-teal-100 text-teal-800">
-                      {getInitials(user.full_name || "")}
+                      {getInitials(user.name || "")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-medium">{user.full_name}</p>
+                    <p className="text-sm font-medium">{user.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {getUserRole()}
                     </p>

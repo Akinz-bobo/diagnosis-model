@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/hooks/auth-context";
+import { signIn } from "next-auth/react";
 
 // Define the form schema with Zod
 const signinSchema = z.object({
@@ -30,7 +30,6 @@ type SigninFormValues = z.infer<typeof signinSchema>;
 export default function SigninPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
   const { toast } = useToast();
 
   // Initialize the form
@@ -46,20 +45,17 @@ export default function SigninPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+      const res = await signIn("credentials", {
+        redirect: false,
+        email: data.email,
+        password: data.password,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Invalid email or password");
+      if (!res?.ok) {
+        throw new Error(res?.error || "Invalid email or password");
       }
 
-      const { access_token } = await response.json();
-      console.log("Access token:", access_token);
-      await login(access_token);
+      // Redirect on successful sign-in
       router.push("/diagnosis");
 
       toast({
@@ -81,7 +77,6 @@ export default function SigninPage() {
       setIsLoading(false);
     }
   }
-
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1 flex items-center justify-center py-12 px-4 md:px-6">

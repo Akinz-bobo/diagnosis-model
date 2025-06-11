@@ -7,7 +7,7 @@ import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import "./globals.css";
 import type { Metadata } from "next";
-import { AuthProvider } from "@/hooks/auth-context";
+import AuthProvider from "@/hooks/auth-context";
 
 const fontSans = FontSans({
   subsets: ["latin"],

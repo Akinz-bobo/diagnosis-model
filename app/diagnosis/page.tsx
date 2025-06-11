@@ -2,8 +2,7 @@
 
 import type React from "react";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,12 +39,11 @@ import {
   Share2,
   ArrowRight,
 } from "lucide-react";
-import Navbar from "@/components/navbar";
-import Footer from "@/components/footer";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SpecialistContactModal } from "@/components/diagnosis/specialist-contact-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { useSession } from "next-auth/react";
 
 // Define the form schema with Zod
 const historySchema = z.object({
@@ -87,17 +85,15 @@ interface ProcessedImage {
 
 export default function DiagnosisPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isSpecialistModalOpen, setIsSpecialistModalOpen] = useState(false);
 
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [diagnosisResult, setDiagnosisResult] =
     useState<DiagnosisResult | null>(null);
-  const router = useRouter();
   const { toast } = useToast();
-
+  const { data: session, status } = useSession();
+  const user = session?.user;
   // Initialize the form
   const form = useForm<HistoryFormValues>({
     resolver: zodResolver(historySchema),
@@ -111,17 +107,6 @@ export default function DiagnosisPage() {
       "Total Deaths": 0,
     },
   });
-
-  // Check authentication on component mount
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/signin");
-    } else {
-      setIsAuthenticated(true);
-    }
-    setIsAuthChecking(false);
-  }, [router]);
 
   // Handle image selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,13 +174,6 @@ export default function DiagnosisPage() {
     setDiagnosisResult(null);
 
     try {
-      const token = localStorage.getItem("token");
-      const tokenType = localStorage.getItem("token_type") || "bearer";
-
-      if (!token) {
-        throw new Error("You are not authenticated. Please sign in.");
-      }
-
       // Create a FormData object to send multipart/form-data
       const formData = new FormData();
 
@@ -272,17 +250,13 @@ export default function DiagnosisPage() {
     }
   }
 
-  if (isAuthChecking) {
+  if (status === "loading") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
         <p className="mt-4 text-muted-foreground">Checking authentication...</p>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null; // Will redirect to signin page via useEffect
   }
 
   return (
