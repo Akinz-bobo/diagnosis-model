@@ -14,19 +14,72 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, FileText, Award, Clock } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+
+type Role = "org_admin" | "admin" | "user";
+type Status = "active" | "inactive";
+
+export type UserProfile = {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  state: string;
+  role: Role;
+  status: Status;
+  created_at: string;
+  updated_at: string;
+  organization_id: string;
+};
 
 export function ProfileOverview() {
-  //   const { user, isLoading } = useCurrentUser();
-  let isLoading = false;
-  let user = {
-    id: "1",
-    image: "https://placeholder.png",
-    email: "user@example.com",
-    full_name: "John Doe",
-    role: "admin",
-    emailVerified: true,
-    createdAt: new Date().toISOString(),
-  };
+  const { data: session } = useSession();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [isOrganizationAccount, setIsOrganizationAccount] =
+    useState<UserProfile>();
+  console.log(session?.accessToken);
+  useEffect(() => {
+    async function checkIsOrgAcct() {
+      if (!session?.user?.id || !session?.accessToken) {
+        setIsOrganizationAccount(undefined);
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/users/${session.user.id}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.accessToken}`,
+            },
+          }
+        );
+        if (!res.ok) {
+          toast.error("Something went wrong in getting the user information");
+          setIsOrganizationAccount(undefined);
+          return;
+        }
+        const result: UserProfile = await res.json();
+        if (result && result.organization_id) {
+          setIsOrganizationAccount(result);
+        } else {
+          setIsOrganizationAccount(undefined);
+        }
+      } catch (error) {
+        console.log(error);
+        toast.error("Failed to fetch user profile.");
+        setIsOrganizationAccount(undefined);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    checkIsOrgAcct();
+  }, [session]);
 
   if (isLoading) {
     return (
@@ -55,7 +108,7 @@ export function ProfileOverview() {
     );
   }
 
-  if (!user) {
+  if (!isOrganizationAccount) {
     return (
       <Card>
         <CardHeader>
@@ -86,7 +139,16 @@ export function ProfileOverview() {
             </div>
             <div>
               <p className="font-medium">Member Since</p>
-              <p className="text-sm text-muted-foreground">January 2023</p>
+              <p className="text-sm text-muted-foreground">
+                {isOrganizationAccount?.created_at
+                  ? new Date(
+                      isOrganizationAccount.created_at
+                    ).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "long",
+                    })
+                  : "Unknown"}
+              </p>
             </div>
           </div>
 

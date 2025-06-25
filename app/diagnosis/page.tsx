@@ -30,7 +30,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
 import {
   Loader2,
   X,
@@ -44,6 +43,9 @@ import { SpecialistContactModal } from "@/components/diagnosis/specialist-contac
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "next-auth/react";
+import { DiagnosticApiResult } from "@/types";
+import { toast } from "sonner";
+import Image from "next/image";
 
 // Define the form schema with Zod
 const historySchema = z.object({
@@ -68,6 +70,15 @@ const historySchema = z.object({
 
 type HistoryFormValues = z.infer<typeof historySchema>;
 
+interface DiagnoseError {
+  message: string;
+}
+interface ProcessedImage {
+  url: string;
+  lesions: string[];
+  relevance: Record<string, number>;
+}
+
 interface DiagnosisResult {
   predicted_class: string;
   confidence: number;
@@ -75,12 +86,6 @@ interface DiagnosisResult {
   processed_images?: ProcessedImage[];
   differential_diagnoses?: string[];
   conclusion?: string;
-}
-
-interface ProcessedImage {
-  url: string;
-  lesions: string[];
-  relevance: string;
 }
 
 export default function DiagnosisPage() {
@@ -91,7 +96,6 @@ export default function DiagnosisPage() {
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [diagnosisResult, setDiagnosisResult] =
     useState<DiagnosisResult | null>(null);
-  const { toast } = useToast();
   const { data: session, status } = useSession();
   const user = session?.user;
   // Initialize the form
@@ -162,11 +166,7 @@ export default function DiagnosisPage() {
   // Handle form submission
   async function onSubmit(data: HistoryFormValues) {
     if (selectedImages.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please upload at least one image for diagnosis",
-        variant: "destructive",
-      });
+      toast.error("Please upload at least one image for diagnosis");
       return;
     }
 
@@ -184,68 +184,50 @@ export default function DiagnosisPage() {
 
       // Append the history data as a JSON string
       formData.append("history", JSON.stringify(data));
+      console.log(formData);
 
-      // In a real app, this would be an actual API call
-      // For now, simulate a response with mock data
-      setTimeout(() => {
-        // Mock response with enhanced data
-        const mockResult: DiagnosisResult = {
-          predicted_class: "Avian Influenza",
-          confidence: 0.92,
-          gpt_background:
-            "Avian influenza, commonly known as bird flu, is a highly contagious viral infection that affects birds. The disease is caused by influenza A viruses. These viruses can infect domestic poultry, including chickens, ducks, and turkeys, as well as wild birds. The symptoms include respiratory distress, decreased egg production, swollen head, and high mortality rates.",
-          processed_images: [
-            {
-              url:
-                imagePreviewUrls[0] || "/placeholder.svg?height=300&width=400",
-              lesions: [
-                "Hemorrhagic tracheitis",
-                "Airsacculitis with fibrinous exudate",
-                "Congested lungs",
-              ],
-              relevance:
-                "These respiratory lesions are highly consistent with Avian Influenza, particularly the hemorrhagic inflammation of the trachea which is a hallmark of HPAI.",
-            },
-            {
-              url:
-                imagePreviewUrls[1] || "/placeholder.svg?height=300&width=400",
-              lesions: [
-                "Petechial hemorrhages on serosal surfaces",
-                "Enlarged, mottled spleen",
-                "Necrotic pancreas",
-              ],
-              relevance:
-                "The systemic hemorrhages and pancreatic necrosis are characteristic of Highly Pathogenic Avian Influenza (HPAI), supporting the primary diagnosis.",
-            },
-          ],
-          differential_diagnoses: [
-            "Newcastle Disease",
-            "Infectious Laryngotracheitis",
-            "Acute Fowl Cholera",
-          ],
-          conclusion:
-            "Based on the clinical history and lesions observed, this case presents with classic signs of Highly Pathogenic Avian Influenza. The combination of respiratory and systemic lesions, particularly the hemorrhagic tracheitis and pancreatic necrosis, strongly supports this diagnosis. However, laboratory confirmation through PCR or virus isolation is recommended for definitive diagnosis.",
-        };
+      const response = await fetch(`/api/diagnosis/predict`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+      }
+      const result: DiagnosticApiResult | DiagnoseError = await response.json();
+      console.log(result);
+      if ("message" in result && result.message === "Diagnosis failed") {
+        toast.error(`${result.message}: The diagnosis was not successful`);
+        setIsLoading(false);
+        return;
+      }
 
-        setDiagnosisResult(mockResult);
+      // Only proceed if result is DiagnosticApiResult (has 'diagnosis' property)
+      if ("diagnosis" in result && "clinical_context" in result) {
+        setDiagnosisResult({
+          predicted_class: result.diagnosis.disease,
+          confidence: result.diagnosis.confidence,
+          differential_diagnoses: result.diagnosis.differential_diagnoses,
+          gpt_background: result.clinical_context.background,
+          conclusion: result.clinical_context.conclusion,
+          processed_images: result.image_analysis.processed_images.map(
+            (image) => ({
+              url: image.url,
+              relevance: image.relevance,
+              lesions: image.lesions,
+            })
+          ),
+        });
         setIsLoading(false);
 
-        toast({
-          title: "Diagnosis Complete",
-          description: "Your diagnosis has been successfully processed.",
-          variant: "default",
-        });
-      }, 2000); // Simulate network delay
+        toast("Your diagnosis has been successfully processed.");
+      }
+      // }, 2000); // Simulate network delay
     } catch (error) {
       console.error("Diagnosis error:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to get diagnosis. Please try again.",
-        variant: "destructive",
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to get diagnosis. Please try again."
+      );
       setIsLoading(false);
     }
   }
@@ -663,8 +645,10 @@ export default function DiagnosisPage() {
                           <div className="grid md:grid-cols-2 gap-6 p-6">
                             <div>
                               <div className="rounded-lg overflow-hidden border bg-muted h-[300px] flex items-center justify-center">
-                                <img
+                                <Image
                                   src={image.url || "/placeholder.svg"}
+                                  width={500}
+                                  height={400}
                                   alt={`Processed image ${index + 1}`}
                                   className="max-h-full max-w-full object-contain"
                                   onError={(e) => {
@@ -697,7 +681,18 @@ export default function DiagnosisPage() {
                                 <h5 className="text-sm font-medium text-muted-foreground mb-2">
                                   Relevance to Diagnosis
                                 </h5>
-                                <p className="text-sm">{image.relevance}</p>
+                                <ul className="text-sm space-y-1">
+                                  {Object.entries(image.relevance).map(
+                                    ([key, value]) => (
+                                      <li key={key}>
+                                        <span className="font-medium">
+                                          {key}:
+                                        </span>{" "}
+                                        {value}
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
                               </div>
                             </div>
                           </div>

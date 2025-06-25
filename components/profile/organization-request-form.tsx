@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,11 +16,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { registerOrganization } from "@/lib/actions/organizations";
+import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 const organizationSchema = z.object({
   name: z.string().min(3, {
@@ -45,24 +45,71 @@ const organizationSchema = z.object({
     })
     .optional()
     .or(z.literal("")),
-  reason: z.string().min(20, {
+  reason_for_creation: z.string().min(20, {
     message: "Please provide a detailed reason for your request.",
   }),
 });
 
+type Role = "org_admin" | "admin" | "user";
+type Status = "active" | "inactive";
+
+export type UserProfile = {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  state: string;
+  role: Role;
+  status: Status;
+  created_at: string;
+  updated_at: string;
+  organization_id: string;
+};
+
 type OrganizationFormValues = z.infer<typeof organizationSchema>;
 
 export function OrganizationRequestForm() {
+  const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const { toast } = useToast();
   const { user } = useCurrentUser();
+  const [isOrganizationAccount, setIsOrganizationAccount] =
+    useState<UserProfile>();
+  console.log(session?.accessToken);
+  useEffect(() => {
+    async function checkIsOrgAcct() {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/users/${session?.user.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authentication: `  Bearer ${session?.accessToken}`,
+          },
+        }
+      );
+      if (!res.ok) {
+        toast.error("Something went wrong in getting the user infromation");
+        return null;
+      }
+      const result: UserProfile = await res.json();
+      console.log(result);
+      if (result) {
+        if (
+          result.role.toLowerCase() === "organization" &&
+          result.organization_id
+        )
+          setIsOrganizationAccount(result);
+        return null;
+      }
+    }
+
+    checkIsOrgAcct();
+  }, [session]);
 
   // Check if user already has an organization role
   const isOrganizationUser =
-    user?.role === "ORGANIZATION" ||
-    user?.role === "ADMIN" ||
-    user?.role === "SUPER_ADMIN";
+    user?.role === "org_admin" || user?.role === "admin";
 
   const form = useForm<OrganizationFormValues>({
     resolver: zodResolver(organizationSchema),
@@ -73,43 +120,81 @@ export function OrganizationRequestForm() {
       phone: "",
       email: user?.email || "",
       website: "",
-      reason: "",
+      reason_for_creation: "",
     },
   });
 
+  // async function onSubmit(data: OrganizationFormValues) {
+  //   setIsLoading(true);
+
+  //   try {
+  //     const result = await fetch("/api/organizations", {
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${session?.accessToken}`,
+  //       },
+
+  //       method: "POST",
+  //       body: JSON.stringify(data),
+  //     });
+
+  //     if (!result.ok) {
+  //       toast.error("Error registering an organization");
+  //       setIsLoading(false);
+  //     }
+  //     const organization = await result.json();
+  //     console.log("NEW ORG:", organization);
+  //     setIsLoading(false);
+  //     setIsSubmitted(true);
+  //   } catch (error) {
+  //     toast.error("An unexpected error occurred. Please try again.");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // }
+
   async function onSubmit(data: OrganizationFormValues) {
     setIsLoading(true);
-
     try {
-      const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined) {
-          formData.append(key, value);
-        }
-      });
-      const result = await registerOrganization(formData);
+      let apiBody = {
+        ...data,
 
-      if (result.success) {
-        toast({
-          title: "Request submitted",
-          description:
-            "Your organization account request has been submitted for review.",
-        });
-        setIsSubmitted(true);
-      } else {
-        toast({
-          title: "Error",
-          description:
-            result.error || "Failed to submit request. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
+        owner_id: session?.user.id,
+      };
+      const result = await fetch("/api/organizations", {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.accessToken}`,
+        },
+        method: "POST",
+
+        body: JSON.stringify(apiBody),
       });
+
+      let errorMessage = "Error registering an organization";
+      if (!result.ok) {
+        // Try to parse error message from API
+        try {
+          const errorData = await result.json();
+          if (errorData?.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // If not JSON, keep default error message
+        }
+        toast.error(errorMessage);
+        setIsLoading(false);
+        return;
+      }
+      const organization = await result.json();
+      console.log(organization);
+      setIsSubmitted(true);
+    } catch (error: any) {
+      let message = "An unexpected error occurred. Please try again.";
+      if (error instanceof Error && error.message) {
+        message = error.message;
+      }
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +214,7 @@ export function OrganizationRequestForm() {
     );
   }
 
-  if (isSubmitted) {
+  if (isOrganizationAccount?.role === "org_admin") {
     return (
       <Alert className="bg-teal-50 border-teal-200">
         <AlertTitle className="text-teal-800">
@@ -255,7 +340,7 @@ export function OrganizationRequestForm() {
 
         <FormField
           control={form.control}
-          name="reason"
+          name="reason_for_creation"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Reason for Request</FormLabel>

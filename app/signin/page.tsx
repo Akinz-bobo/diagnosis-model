@@ -16,8 +16,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
 import { signIn } from "next-auth/react";
+import { toast } from "sonner";
 
 // Define the form schema with Zod
 const signinSchema = z.object({
@@ -30,7 +30,7 @@ type SigninFormValues = z.infer<typeof signinSchema>;
 export default function SigninPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
+  // const { toast } = useToast();
 
   // Initialize the form
   const form = useForm<SigninFormValues>({
@@ -51,28 +51,21 @@ export default function SigninPage() {
         password: data.password,
       });
 
-      if (!res?.ok) {
-        throw new Error(res?.error || "Invalid email or password");
+      console.log(res);
+      if (res?.error === "CredentialsSignin") {
+        console.log("Worked!!!");
+        toast.error("Unable to login. Invalid login credentials");
       }
 
       // Redirect on successful sign-in
       router.push("/diagnosis");
-
-      toast({
-        title: "Success!",
-        description: "You have successfully signed in.",
-        variant: "default",
-      });
     } catch (error) {
       console.error("Signin error:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to sign in. Please try again.",
-        variant: "destructive",
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to sign in. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }

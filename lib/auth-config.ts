@@ -9,6 +9,9 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role?: string;
+      organization_id?: string;
+      phone?: string;
+      // ...any other fields
     };
     accessToken?: string;
   }
@@ -19,16 +22,21 @@ declare module "next-auth" {
     email?: string | null;
     image?: string | null;
     role?: string;
+    organization_id?: string;
+    phone?: string;
     accessToken?: string;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    id?: string;
+    id: string;
+    name?: string | null;
     email?: string | null;
     image?: string | null;
     role?: string;
+    organization_id?: string;
+    phone?: string;
     accessToken?: string;
   }
 }
@@ -63,11 +71,13 @@ export const authOptions: AuthOptions = {
 
           return {
             id: data.user.id,
-            name: data.user.name,
+            name: data.user.full_name,
             email: data.user.email,
             image: data.user.image,
             role: data.user.role,
             accessToken: data.access_token,
+            organization_id: data.user.organization_id,
+            phone: data.user.phone,
           };
         } catch (err) {
           console.error("Authorize error:", err);
@@ -87,7 +97,10 @@ export const authOptions: AuthOptions = {
         token.email = user.email;
         token.role = user.role;
         token.image = user.image;
+        token.name = user.name;
         token.accessToken = user.accessToken;
+        token.organization_id = user.organization_id;
+        token.phone = user.phone;
       }
       return token;
     },
@@ -97,6 +110,10 @@ export const authOptions: AuthOptions = {
         session.user.email = token.email!;
         session.user.role = token.role!;
         session.user.image = token.image!;
+        session.user.name = token.name;
+        session.user.organization_id = token.organization_id;
+        session.user.phone = token.phone;
+        // ...add any other fields
         session.accessToken = token.accessToken!;
       }
       return session;

@@ -1,4 +1,5 @@
 // app/api/diagnosis/route.ts
+import { auth } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -16,16 +17,9 @@ const REQUIRED_FIELDS = [
 export async function POST(req: Request) {
   try {
     // Authentication check
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-    const tokenType = cookieStore.get("token_type")?.value || "Bearer";
 
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized: No token found" },
-        { status: 401 }
-      );
-    }
+    const session = await auth();
+    console.log("Session Token", session?.accessToken);
 
     // Parse form data
     const formData = await req.formData();
@@ -127,7 +121,7 @@ export async function POST(req: Request) {
 
     // Prepare headers
     const headers = new Headers();
-    headers.append("Authorization", `${tokenType} ${token}`);
+    headers.append("Authorization", `Bearer ${session?.accessToken}`);
 
     // Log outgoing FormData for debugging
     for (const [key, value] of backendFormData.entries()) {
@@ -184,21 +178,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-
-export async function GET(req: Request) {
-  try {
-    // Authentication check
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-    const tokenType = cookieStore.get("token_type")?.value || "Bearer";
-    if (!token) {
-      return NextResponse.json(
-        { message: "Unauthorized: No token found" },
-        { status: 401 }
-      );
-    }
-
-    //  Get user ID from query parameters
-  } catch (error) {}
 }

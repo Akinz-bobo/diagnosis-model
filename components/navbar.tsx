@@ -39,11 +39,10 @@ export default function Navbar() {
 
   const getUserRole = () => {
     switch (user?.role) {
-      case "SUPER_ADMIN":
+      case "admin":
         return "Super Admin";
-      case "ADMIN":
-        return "Admin";
-      case "ORGANIZATION":
+
+      case "org_admin":
         return "Organization";
       default:
         return "User";
@@ -52,10 +51,9 @@ export default function Navbar() {
 
   const getDashboardLink = () => {
     switch (user?.role) {
-      case "SUPER_ADMIN":
+      case "admin":
         return "/dashboard/super-admin";
-      case "ADMIN":
-      case "ORGANIZATION":
+      case "org_admin":
         return "/dashboard";
       default:
         return "/dashboard";
@@ -165,9 +163,7 @@ export default function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/profile">Profile</Link>
                 </DropdownMenuItem>
-                {(user.role === "ADMIN" ||
-                  user.role === "ORGANIZATION" ||
-                  user.role === "SUPER_ADMIN") && (
+                {(user.role === "admin" || user.role === "org_admin") && (
                   <DropdownMenuItem asChild>
                     <Link href={getDashboardLink()}>Dashboard</Link>
                   </DropdownMenuItem>

@@ -1,13 +1,13 @@
 import type React from "react";
 import { Mona_Sans as FontSans } from "next/font/google";
 import localFont from "next/font/local";
-import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import "./globals.css";
 import type { Metadata } from "next";
 import AuthProvider from "@/hooks/auth-context";
+import { Toaster } from "sonner";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -36,7 +36,7 @@ export default function RootLayout({
             <Navbar />
             <main className="flex-1">{children}</main>
             <Footer />
-            <Toaster />
+            <Toaster richColors position="top-center" />
           </AuthProvider>
         </ThemeProvider>
       </body>
