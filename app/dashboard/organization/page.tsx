@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,12 +36,45 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import Link from "next/link";
+import { useOrganizationQuery } from "@/hooks/use-organization";
+import { useCurrentUserQuery } from "@/hooks/use-user";
+import { Loader2 } from "lucide-react";
 
-export default async function OrganizationPage() {
-  const user = await getCurrentUser();
-  const organization = await getOrganization(user?.id || "");
+export default function OrganizationPage() {
+  const user = useCurrentUserQuery();
+  const organization = useOrganizationQuery(user.data?.organization_id || "");
 
-  const hasOrganization = !!organization;
+  if (user.isLoading || organization.isLoading) {
+    return (
+      <DashboardShell>
+        <div className="flex justify-center items-center h-40">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  if (user.error) {
+    return (
+      <DashboardShell>
+        <div className="text-red-500 text-center py-8">
+          Error loading user: {user.error.message}
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  if (organization.error) {
+    return (
+      <DashboardShell>
+        <div className="text-red-500 text-center py-8">
+          Error loading organization: {organization.error.message}
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  const hasOrganization = !!organization.data;
 
   return (
     <DashboardShell>
@@ -66,29 +100,31 @@ export default async function OrganizationPage() {
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="flex-1 space-y-4">
                   <div>
-                    <h3 className="text-lg font-medium">{organization.name}</h3>
+                    <h3 className="text-lg font-medium">
+                      {organization.data.name}
+                    </h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {organization.description}
+                      {organization.data.description}
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span>{organization.address}</span>
+                      <span>{organization.data.address}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{organization.phone}</span>
+                      <span>{organization.data.phone}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{organization.email}</span>
+                      <span>{organization.data.email}</span>
                     </div>
-                    {organization.website && (
+                    {organization.data.website && (
                       <div className="flex items-center gap-2 text-sm">
                         <Globe className="h-4 w-4 text-muted-foreground" />
-                        <span>{organization.website}</span>
+                        <span>{organization.data.website}</span>
                       </div>
                     )}
                   </div>
@@ -113,12 +149,14 @@ export default async function OrganizationPage() {
                               Invite a new member to join your organization.
                             </DialogDescription>
                           </DialogHeader>
-                          <MemberInviteForm organizationId={organization.id} />
+                          <MemberInviteForm
+                            organizationId={organization.data.id}
+                          />
                         </DialogContent>
                       </Dialog>
                     </div>
                     <div className="space-y-4">
-                      {organization.members.map((member) => (
+                      {organization.data.team?.members.map((member) => (
                         <div
                           key={member.id}
                           className="flex items-center justify-between"
@@ -126,12 +164,12 @@ export default async function OrganizationPage() {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className="bg-teal-100 text-teal-800">
-                                {member.name.substring(0, 1)}
+                                {member.full_name.substring(0, 1)}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <p className="text-sm font-medium">
-                                {member.name}
+                                {member.full_name}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {member.email}
@@ -165,7 +203,10 @@ export default async function OrganizationPage() {
                       Update your organization details.
                     </DialogDescription>
                   </DialogHeader>
-                  <OrganizationForm organization={organization} isEditing />
+                  <OrganizationForm
+                    organization={organization.data}
+                    isEditing
+                  />
                 </DialogContent>
               </Dialog>
             </CardFooter>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,8 +17,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { registerOrganization } from "@/lib/actions/organizations";
 import { Loader2 } from "lucide-react";
+import { Organization } from "@/lib/api/organization";
+import {
+  useCreateOrganizationMutation,
+  useUpdateOrganizationMutation,
+} from "@/hooks/use-organization";
 
 const organizationSchema = z.object({
   name: z.string().min(3, {
@@ -43,66 +47,108 @@ const organizationSchema = z.object({
     })
     .optional()
     .or(z.literal("")),
+  reason_for_creation: z.string().optional().or(z.literal("")),
+  owner_id: z.string().optional().or(z.literal("")),
 });
 
 type OrganizationFormValues = z.infer<typeof organizationSchema>;
 
-export function OrganizationForm() {
+type OrganizationFormProps = {
+  organization?: Organization;
+  isEditing?: boolean;
+};
+
+export function OrganizationForm({
+  organization,
+  isEditing,
+}: OrganizationFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const createOrgMutation = useCreateOrganizationMutation();
+  const updateOrgMutation = useUpdateOrganizationMutation();
 
   const form = useForm<OrganizationFormValues>({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      address: "",
-      phone: "",
-      email: "",
-      website: "",
+      name: organization?.name || "",
+      description: organization?.description || "",
+      address: organization?.address || "",
+      phone: organization?.phone || "",
+      email: organization?.email || "",
+      website: organization?.website || "",
+      reason_for_creation: organization?.reason_for_creation || "",
+      owner_id: organization?.owner_id || "",
     },
   });
 
+  useEffect(() => {
+    if (organization) {
+      form.reset({
+        name: organization.name || "",
+        description: organization.description || "",
+        address: organization.address || "",
+        phone: organization.phone || "",
+        email: organization.email || "",
+        website: organization.website || "",
+        reason_for_creation: organization.reason_for_creation || "",
+        owner_id: organization.owner_id || "",
+      });
+    }
+  }, [organization, form]);
+
   async function onSubmit(data: OrganizationFormValues) {
     setIsLoading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("name", data.name);
-      formData.append("description", data.description);
-      formData.append("address", data.address);
-      formData.append("phone", data.phone);
-      formData.append("email", data.email);
-      if (data.website) {
-        formData.append("website", data.website);
-      }
-
-      const result = await registerOrganization(formData);
-
-      if (result.success) {
-        toast({
-          title: "Organization registered",
-          description: "Your organization has been successfully registered.",
-        });
-        // Refresh the page to show the new organization
-        window.location.reload();
-      } else {
-        toast({
-          title: "Error",
-          description:
-            result.error ||
-            "Failed to register organization. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    if (isEditing && organization) {
+      updateOrgMutation.mutate(
+        { orgId: organization.id, data },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Organization updated",
+              description: "Your organization has been updated successfully.",
+            });
+          },
+          onError: (err) => {
+            toast({
+              title: "Error",
+              description:
+                err.message ||
+                "Failed to update organization. Please try again.",
+              variant: "destructive",
+            });
+          },
+          onSettled: () => setIsLoading(false),
+        }
+      );
+    } else {
+      createOrgMutation.mutate(
+        {
+          ...data,
+          website: data.website || null,
+          reason_for_creation: data.reason_for_creation || null,
+          owner_id: data.owner_id || null,
+        },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Organization registered",
+              description:
+                "Your organization has been successfully registered.",
+            });
+            window.location.reload();
+          },
+          onError: (err) => {
+            toast({
+              title: "Error",
+              description:
+                err.message ||
+                "Failed to register organization. Please try again.",
+              variant: "destructive",
+            });
+          },
+          onSettled: () => setIsLoading(false),
+        }
+      );
     }
   }
 
@@ -215,15 +261,45 @@ export function OrganizationForm() {
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="reason_for_creation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Reason for Creation (Optional)</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Why are you creating this organization?"
+                  className="resize-none"
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                Briefly explain the purpose of this organization.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button
           type="submit"
           className="w-full bg-teal-600 hover:bg-teal-700"
-          disabled={isLoading}
+          disabled={
+            isLoading ||
+            createOrgMutation.isPending ||
+            updateOrgMutation.isPending
+          }
         >
-          {isLoading ? (
+          {isLoading ||
+          createOrgMutation.isPending ||
+          updateOrgMutation.isPending ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Registering...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isEditing ? "Updating..." : "Registering..."}
             </>
+          ) : isEditing ? (
+            "Update Organization"
           ) : (
             "Register Organization"
           )}
