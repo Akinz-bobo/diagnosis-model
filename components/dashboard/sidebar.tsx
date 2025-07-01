@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User } from "@/lib/types";
 import {
   LayoutDashboard,
   UserIcon,
@@ -21,57 +20,85 @@ import {
   LineChart,
 } from "lucide-react";
 import { useState } from "react";
+import { useCurrentUserQuery } from "@/hooks/use-user";
 
-interface DashboardSidebarProps {
-  user: User;
-}
-
-export default function DashboardSidebar({ user }: DashboardSidebarProps) {
+export default function DashboardSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { data: user, isLoading, error } = useCurrentUserQuery();
+
+  if (isLoading) {
+    return (
+      <aside className="hidden border-r bg-slate-50 dark:bg-slate-900 md:flex md:w-64 md:flex-col justify-center items-center">
+        <div className="flex flex-col items-center justify-center h-full w-full">
+          <span className="text-muted-foreground text-sm">Loading user...</span>
+        </div>
+      </aside>
+    );
+  }
+
+  if (error) {
+    return (
+      <aside className="hidden border-r bg-slate-50 dark:bg-slate-900 md:flex md:w-64 md:flex-col justify-center items-center">
+        <div className="flex flex-col items-center justify-center h-full w-full">
+          <span className="text-red-500 text-sm">Error: {error.message}</span>
+        </div>
+      </aside>
+    );
+  }
+
+  if (!user) {
+    return (
+      <aside className="hidden border-r bg-slate-50 dark:bg-slate-900 md:flex md:w-64 md:flex-col justify-center items-center">
+        <div className="flex flex-col items-center justify-center h-full w-full">
+          <span className="text-muted-foreground text-sm">No user found.</span>
+        </div>
+      </aside>
+    );
+  }
 
   const routes = [
     {
       label: "Dashboard",
       icon: LayoutDashboard,
       href: "/dashboard",
-      roles: ["user", "admin"],
+      roles: ["user", "admin", "org_admin"],
     },
     {
       label: "My Analytics",
       icon: LineChart,
       href: "/dashboard/my-analytics",
-      roles: ["user"],
+      roles: ["user", "org_admin"],
     },
     {
       label: "Diagnoses",
       icon: FileText,
       href: "/dashboard/diagnoses",
-      roles: ["user", "admin"],
+      roles: ["user", "admin", "org_admin"],
     },
     {
       label: "API Keys",
       icon: Key,
       href: "/dashboard/api-keys",
-      roles: ["user", "admin"],
+      roles: ["user", "admin", "org_admin"],
     },
-    {
-      label: "Documentation",
-      icon: FileText,
-      href: "/dashboard/documentation",
-      roles: ["user", "admin"],
-    },
+    // {
+    //   label: "Documentation",
+    //   icon: FileText,
+    //   href: "/dashboard/documentation",
+    //   roles: ["user", "admin", "org_admin"],
+    // },
     {
       label: "Organization",
       icon: Building,
       href: "/dashboard/organization",
-      roles: ["user", "admin"],
+      roles: ["user", "admin", "org_admin"],
     },
     {
       label: "Subscription",
       icon: CreditCard,
       href: "/dashboard/subscription",
-      roles: ["user", "admin"],
+      roles: ["user", "admin", "org_admin"],
     },
     {
       label: "Analytics",
@@ -89,7 +116,7 @@ export default function DashboardSidebar({ user }: DashboardSidebarProps) {
       label: "Settings",
       icon: Settings,
       href: "/dashboard/settings",
-      roles: ["user", "admin"],
+      roles: ["user", "admin", "org_admin"],
     },
   ];
 

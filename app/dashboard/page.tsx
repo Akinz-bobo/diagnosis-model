@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -6,7 +8,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getCurrentUser } from "@/lib/auth";
 import { Activity, Users, Key, FileText, BarChart3 } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { DashboardShell } from "@/components/dashboard/shell";
@@ -14,9 +15,39 @@ import { RecentDiagnoses } from "@/components/dashboard/recent-diagnoses";
 import { ApiUsageChart } from "@/components/dashboard/api-usage-chart";
 import { UserRoleGate } from "@/components/auth/user-role-gate";
 import { UserStats } from "@/components/dashboard/user-stats";
+import { useCurrentUserQuery } from "@/hooks/use-user";
+import { Loader2 } from "lucide-react";
 
-export default async function DashboardPage() {
-  const user = await getCurrentUser();
+export default function DashboardPage() {
+  const { data: user, isLoading, error } = useCurrentUserQuery();
+
+  if (isLoading) {
+    return (
+      <DashboardShell>
+        <div className="flex justify-center items-center h-40">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardShell>
+        <div className="text-red-500 text-center py-8">
+          Error: {error.message}
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DashboardShell>
+        <div className="text-center py-8">No user found.</div>
+      </DashboardShell>
+    );
+  }
 
   return (
     <DashboardShell>
@@ -29,7 +60,7 @@ export default async function DashboardPage() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <UserRoleGate allowedRoles={["admin"]}>
+          <UserRoleGate allowedRoles={["admin", "org_admin"]}>
             <TabsTrigger value="admin">Admin</TabsTrigger>
           </UserRoleGate>
         </TabsList>

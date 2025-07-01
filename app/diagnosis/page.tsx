@@ -43,7 +43,7 @@ import { SpecialistContactModal } from "@/components/diagnosis/specialist-contac
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "next-auth/react";
-import { DiagnosticApiResult } from "@/types";
+import { DiagnosisResult as DiagnosticApiResult } from "@/types";
 import { toast } from "sonner";
 import Image from "next/image";
 

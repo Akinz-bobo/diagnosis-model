@@ -1,8 +1,7 @@
 "use client";
 
 import type React from "react";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,35 +20,46 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, Upload } from "lucide-react";
-import { useCurrentUser } from "@/hooks/use-current-user";
-import { updateUserProfile } from "@/lib/actions/users";
+import { useCurrentUserQuery, useUpdateUserMutation } from "@/hooks/use-user";
 
 const profileFormSchema = z.object({
-  name: z.string().min(2, {
+  full_name: z.string().min(2, {
     message: "Name must be at least 2 characters.",
   }),
   bio: z.string().max(160).optional(),
   profession: z.string().max(30).optional(),
-  location: z.string().max(30).optional(),
+  address: z.string().max(100).optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export function ProfileForm() {
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: user, isLoading: userLoading, error } = useCurrentUserQuery();
+  const updateUserMutation = useUpdateUserMutation();
   const [isUploading, setIsUploading] = useState(false);
-  const { user, mutate } = useCurrentUser();
   const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      name: user?.name || "",
+      full_name: user?.full_name || "",
       bio: user?.bio || "",
       profession: user?.profession || "",
-      location: user?.location || "",
+      address: user?.address || "",
     },
   });
+
+  // Sync form with user data when loaded
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        full_name: user.full_name || "",
+        bio: user.bio || "",
+        profession: user.profession || "",
+        address: user.address || "",
+      });
+    }
+  }, [user, form]);
 
   const getInitials = (name: string) => {
     if (!name) return "U";
@@ -61,80 +71,84 @@ export function ProfileForm() {
   };
 
   async function onSubmit(data: ProfileFormValues) {
-    setIsLoading(true);
-
-    try {
-      const result = await updateUserProfile(data);
-
-      if (result.success) {
-        toast({
-          title: "Profile updated",
-          description: "Your profile has been updated successfully.",
-        });
-        // Update the user data in the client
-        mutate();
-      } else {
-        toast({
-          title: "Error",
-          description:
-            result.error || "Failed to update profile. Please try again.",
-          variant: "destructive",
-        });
+    if (!user) return;
+    updateUserMutation.mutate(
+      { userId: user.id, data },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Profile updated",
+            description: "Your profile has been updated successfully.",
+          });
+        },
+        onError: (err) => {
+          toast({
+            title: "Error",
+            description:
+              err.message || "Failed to update profile. Please try again.",
+            variant: "destructive",
+          });
+        },
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    );
   }
 
   const handleImageUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-
+    if (!file || !user) return;
     setIsUploading(true);
 
-    try {
-      // In a real app, you would upload the file to a storage service
-      // and get back a URL to the uploaded image
-      // For now, we'll simulate a successful upload after a delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      toast({
-        title: "Image uploaded",
-        description: "Your profile image has been updated successfully.",
-      });
-
-      // Update the user data in the client
-      mutate({
-        ...user,
-        image: URL.createObjectURL(file),
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to upload image. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-    }
+    updateUserMutation.mutate(
+      { userId: user.id, data: { image_file: file } },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Image uploaded",
+            description: "Your profile image has been updated successfully.",
+          });
+        },
+        onError: (err) => {
+          toast({
+            title: "Error",
+            description:
+              err.message || "Failed to upload image. Please try again.",
+            variant: "destructive",
+          });
+        },
+        onSettled: () => setIsUploading(false),
+      }
+    );
   };
+
+  if (userLoading) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="text-red-500">Error: {error.message}</div>;
+  }
+
+  if (!user) {
+    return <div>No user found.</div>;
+  }
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col items-center space-y-4">
         <div className="relative">
           <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-            <AvatarImage src={user?.image || ""} alt={user?.name || "User"} />
+            <AvatarImage
+              src={user.image || ""}
+              alt={user.full_name || "User"}
+            />
             <AvatarFallback className="text-2xl bg-teal-100 text-teal-800">
-              {getInitials(user?.name || "")}
+              {getInitials(user.full_name || "")}
             </AvatarFallback>
           </Avatar>
           <div className="absolute bottom-0 right-0">
@@ -167,7 +181,7 @@ export function ProfileForm() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FormField
             control={form.control}
-            name="name"
+            name="full_name"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Name</FormLabel>
@@ -225,7 +239,7 @@ export function ProfileForm() {
 
             <FormField
               control={form.control}
-              name="location"
+              name="address"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Location</FormLabel>
@@ -245,9 +259,9 @@ export function ProfileForm() {
           <Button
             type="submit"
             className="bg-teal-600 hover:bg-teal-700"
-            disabled={isLoading}
+            disabled={updateUserMutation.isPending}
           >
-            {isLoading ? (
+            {updateUserMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...
               </>

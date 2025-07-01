@@ -1,7 +1,24 @@
-import { type NextRequest, NextResponse } from "next/server";
-import type { User } from "@/lib/types";
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-// GET /api/users - Get all users
+
+type UserProfile = {
+  id: string;
+  email: string;
+  full_name: string;
+  phone: string | null;
+  address: string | null;
+  state: string | null;
+  profession: string | null;
+  gender: string | null;
+  bio: string | null;
+  image: string | null;
+  role: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  organization_id: string | null;
+};
+
 export async function GET() {
   try {
     const session = await auth();
@@ -9,139 +26,45 @@ export async function GET() {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    console.log("Token: ", session.accessToken);
-
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/me`,
       {
         headers: {
-          Authentication: `  Bearer ${session.accessToken}`,
+          Authorization: `Bearer ${session.accessToken}`,
         },
       }
     );
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      return NextResponse.json(
+        { message: errorData?.message || "Failed to fetch user" },
+        { status: res.status }
+      );
+    }
+
     const result = await res.json();
-    // Otherwise return all users
-    return NextResponse.json(result);
+
+    // Type guard to ensure result matches UserProfile
+    const isUserProfile = (data: any): data is UserProfile =>
+      data &&
+      typeof data.id === "string" &&
+      typeof data.email === "string" &&
+      typeof data.full_name === "string";
+
+    if (!isUserProfile(result)) {
+      return NextResponse.json(
+        { message: "Invalid user profile response" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(result as UserProfile);
   } catch (error) {
-    console.error("Error fetching users:", error);
+    console.error("Error fetching user:", error);
     return NextResponse.json(
-      { message: "Failed to fetch users" },
+      { message: "Failed to fetch user" },
       { status: 500 }
     );
   }
 }
-
-// POST /api/users - Create a new user
-// export async function POST(request: NextRequest) {
-//   try {
-//     const data = await request.json();
-
-//     // Validate required fields
-//     if (!data.email || !data.full_name) {
-//       return NextResponse.json(
-//         { message: "Email and full name are required" },
-//         { status: 400 }
-//       );
-//     }
-
-//     // Check if user already exists
-//     if (users.some((user) => user.email === data.email)) {
-//       return NextResponse.json(
-//         { message: "User with this email already exists" },
-//         { status: 409 }
-//       );
-//     }
-
-//     // Create new user
-//     const newUser: User = {
-//       id: `user-${Date.now()}`,
-//       email: data.email,
-//       image: data.image || "https://placeholder.com/150",
-//       full_name: data.full_name,
-//       role: data.role || "user",
-//       emailVerified: data.emailVerified || false,
-//     };
-
-//     users.push(newUser);
-
-//     return NextResponse.json(newUser, { status: 201 });
-//   } catch (error) {
-//     console.error("Error creating user:", error);
-//     return NextResponse.json(
-//       { message: "Failed to create user" },
-//       { status: 500 }
-//     );
-//   }
-// }
-
-// // PUT /api/users - Update a user
-// export async function PUT(request: NextRequest) {
-//   try {
-//     const data = await request.json();
-
-//     // Validate required fields
-//     if (!data.id) {
-//       return NextResponse.json(
-//         { message: "User ID is required" },
-//         { status: 400 }
-//       );
-//     }
-
-//     // Find user
-//     const userIndex = users.findIndex((user) => user.id === data.id);
-
-//     if (userIndex === -1) {
-//       return NextResponse.json({ message: "User not found" }, { status: 404 });
-//     }
-
-//     // Update user
-//     const updatedUser = {
-//       ...users[userIndex],
-//       ...data,
-//     };
-
-//     users[userIndex] = updatedUser;
-
-//     return NextResponse.json(updatedUser);
-//   } catch (error) {
-//     console.error("Error updating user:", error);
-//     return NextResponse.json(
-//       { message: "Failed to update user" },
-//       { status: 500 }
-//     );
-//   }
-// }
-
-// // DELETE /api/users - Delete a user
-// export async function DELETE(request: NextRequest) {
-//   try {
-//     const { searchParams } = new URL(request.url);
-//     const id = searchParams.get("id");
-
-//     if (!id) {
-//       return NextResponse.json(
-//         { message: "User ID is required" },
-//         { status: 400 }
-//       );
-//     }
-
-//     const initialLength = users.length;
-//     const newUsers = users.filter((user) => user.id !== id);
-
-//     if (newUsers.length === initialLength) {
-//       return NextResponse.json({ message: "User not found" }, { status: 404 });
-//     }
-
-//     // Update the users array
-//     users.length = 0;
-//     users.push(...newUsers);
-
-//     return NextResponse.json({ message: "User deleted successfully" });
-//   } catch (error) {
-//     console.error("Error deleting user:", error);
-//     return NextResponse.json(
-//       { message: "Failed to delete user" },
-//       { status: 500 }
-//     );
-//   }
-// }
