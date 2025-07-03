@@ -1,3 +1,5 @@
+"use client";
+import { useApiKeysQuery } from "@/hooks/use-api-key";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,12 +14,10 @@ import { DashboardShell } from "@/components/dashboard/shell";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserRoleGate } from "@/components/auth/user-role-gate";
-import { getCurrentUser } from "@/lib/auth";
 import { Copy, Key, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { columns } from "@/components/dashboard/api-keys/columns";
 import { ApiKeyRequestForm } from "@/components/dashboard/api-keys/request-form";
-import { getApiKeys, getPendingApiKeyRequests } from "@/lib/actions/api-keys";
 import {
   Dialog,
   DialogContent,
@@ -26,11 +26,35 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useMemo } from "react";
+import { APIKeyOutFull } from "@/lib/api/api-key";
 
-export default async function ApiKeysPage() {
-  const user = await getCurrentUser();
-  const apiKeys = await getApiKeys(user?.id);
-  const pendingRequests = await getPendingApiKeyRequests();
+// Helper to coerce APIKeyOutFull to the expected table type
+function toTableApiKey(apiKey: APIKeyOutFull) {
+  return {
+    ...apiKey,
+    name: apiKey.name ?? "",
+    key: apiKey.key ?? "",
+    status: apiKey.status ?? "inactive",
+    created: apiKey.created ?? "",
+    lastUsed: apiKey.lastUsed ?? "",
+    usageCount: apiKey.usageCount ?? 0,
+    user: apiKey.user ?? "",
+    organization: apiKey.organization ?? "",
+  };
+}
+
+export default function ApiKeysPage() {
+  const { data: apiKeys = [], isLoading, isError } = useApiKeysQuery();
+
+  const activeApiKeys = useMemo(
+    () => apiKeys.filter((k) => k.status === "active").map(toTableApiKey),
+    [apiKeys]
+  );
+  const inactiveApiKeys = useMemo(
+    () => apiKeys.filter((k) => k.status !== "active").map(toTableApiKey),
+    [apiKeys]
+  );
 
   return (
     <DashboardShell>
@@ -61,26 +85,25 @@ export default async function ApiKeysPage() {
         </Dialog>
       </DashboardHeader>
 
-      <UserRoleGate allowedRoles={["admin"]}>
-        <Tabs defaultValue="all" className="space-y-4">
+      <UserRoleGate allowedRoles={["admin", "org_admin"]}>
+        <Tabs defaultValue="active" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="all">All API Keys</TabsTrigger>
-            <TabsTrigger value="pending">Pending Requests</TabsTrigger>
+            <TabsTrigger value="active">Active API Keys</TabsTrigger>
+            <TabsTrigger value="inactive">Inactive API Keys</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all" className="space-y-4">
-            {apiKeys.length > 0 ? (
+          <TabsContent value="active" className="space-y-4">
+            {activeApiKeys.length > 0 ? (
               <DataTable
                 columns={columns}
-                data={apiKeys}
+                data={activeApiKeys}
                 searchKey="name"
-                searchPlaceholder="Search by name..."
               />
             ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-10 text-center">
                   <Key className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">No API Keys Found</h3>
+                  <h3 className="text-lg font-medium">No Active API Keys</h3>
                   <p className="text-sm text-muted-foreground mt-1 max-w-md">
                     There are no active API keys in the system. Users can
                     request API keys from their dashboard.
@@ -90,21 +113,20 @@ export default async function ApiKeysPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="pending" className="space-y-4">
-            {pendingRequests.length > 0 ? (
+          <TabsContent value="inactive" className="space-y-4">
+            {inactiveApiKeys.length > 0 ? (
               <DataTable
                 columns={columns}
-                data={pendingRequests}
+                data={inactiveApiKeys}
                 searchKey="name"
-                searchPlaceholder="Search by name..."
               />
             ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-10 text-center">
                   <Key className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">No Pending Requests</h3>
+                  <h3 className="text-lg font-medium">No Inactive API Keys</h3>
                   <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                    There are no pending API key requests at this time.
+                    There are no inactive API keys in the system.
                   </p>
                 </CardContent>
               </Card>
@@ -123,9 +145,9 @@ export default async function ApiKeysPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {apiKeys.length > 0 ? (
+              {activeApiKeys.length > 0 ? (
                 <div className="space-y-4">
-                  {apiKeys.map((apiKey) => (
+                  {activeApiKeys.map((apiKey) => (
                     <div key={apiKey.id} className="rounded-lg border p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -200,27 +222,27 @@ export default async function ApiKeysPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Pending Requests</CardTitle>
+              <CardTitle>Inactive API Keys</CardTitle>
               <CardDescription>
-                API key requests awaiting approval
+                API key requests that are inactive
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {pendingRequests.length > 0 ? (
+              {inactiveApiKeys.length > 0 ? (
                 <div className="space-y-4">
-                  {pendingRequests.map((request) => (
-                    <div key={request.id} className="rounded-lg border p-4">
+                  {inactiveApiKeys.map((apiKey) => (
+                    <div key={apiKey.id} className="rounded-lg border p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Key className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{request.name}</span>
+                          <span className="font-medium">{apiKey.name}</span>
                           <Badge variant="secondary" className="capitalize">
-                            {request.status}
+                            {apiKey.status}
                           </Badge>
                         </div>
                       </div>
                       <div className="mt-2 text-xs text-muted-foreground">
-                        Requested on {request.created}
+                        Created on {apiKey.created}
                       </div>
                     </div>
                   ))}
@@ -228,9 +250,9 @@ export default async function ApiKeysPage() {
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Key className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">No Pending Requests</h3>
+                  <h3 className="text-lg font-medium">No Inactive API Keys</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    You don't have any pending API key requests.
+                    You don't have any inactive API keys.
                   </p>
                 </div>
               )}

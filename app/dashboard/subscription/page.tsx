@@ -24,6 +24,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { UserRoleGate } from "@/components/auth/user-role-gate";
+import { AdminSubscriptionView } from "@/components/dashboard/subscription/admin-subscription-view";
+import { UserSubscriptionView } from "@/components/dashboard/subscription/user-subscription-view";
 
 export default async function SubscriptionPage() {
   const user = await getCurrentUser();
@@ -83,96 +86,15 @@ export default async function SubscriptionPage() {
 
   return (
     <DashboardShell>
-      <DashboardHeader
-        heading="Subscription"
-        text="Manage your subscription and billing information."
-        breadcrumb={[
-          { title: "Dashboard", href: "/dashboard" },
-          { title: "Subscription", href: "/dashboard/subscription" },
-        ]}
-      />
+      <UserRoleGate allowedRoles={["admin"]}>
+        <AdminSubscriptionView user={user} />
+      </UserRoleGate>
+
+      <UserRoleGate allowedRoles={["user", "org_admin"]}>
+        <UserSubscriptionView user={user} />
+      </UserRoleGate>
 
       <div className="grid gap-6">
-        <div className="grid gap-4 md:grid-cols-3">
-          {plans.map((plan) => (
-            <Card
-              key={plan.name}
-              className={cn(
-                "flex flex-col",
-                plan.popular && "border-teal-600 shadow-md"
-              )}
-            >
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>{plan.name}</CardTitle>
-                  {plan.popular && (
-                    <Badge className="bg-teal-600">Popular</Badge>
-                  )}
-                </div>
-                <CardDescription>{plan.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <div className="mb-4">
-                  <span className="text-3xl font-bold">{plan.price}</span>
-                  <span className="text-sm text-muted-foreground ml-1">
-                    {plan.period}
-                  </span>
-                </div>
-
-                <ul className="space-y-2 text-sm">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center">
-                      {feature.included ? (
-                        <Check className="mr-2 h-4 w-4 text-teal-600" />
-                      ) : (
-                        <X className="mr-2 h-4 w-4 text-slate-400" />
-                      )}
-                      <span
-                        className={cn(
-                          !feature.included && "text-muted-foreground"
-                        )}
-                      >
-                        {feature.text}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              <CardFooter>
-                {plan.current ? (
-                  <Button className="w-full" variant="outline" disabled>
-                    Current Plan
-                  </Button>
-                ) : (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button className="w-full bg-teal-600 hover:bg-teal-700">
-                        {plan.name === "Enterprise"
-                          ? "Contact Sales"
-                          : "Upgrade"}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Upgrade to {plan.name}</DialogTitle>
-                        <DialogDescription>
-                          {plan.name === "Enterprise"
-                            ? "Please fill out this form to contact our sales team."
-                            : `Upgrade to the ${plan.name} plan to get more features and higher limits.`}
-                        </DialogDescription>
-                      </DialogHeader>
-                      <SubscriptionForm
-                        userId={user?.id || ""}
-                        plan={plan.name.toLowerCase()}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle>Billing Information</CardTitle>

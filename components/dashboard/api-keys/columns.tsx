@@ -10,6 +10,8 @@ import {
   Copy,
   RefreshCw,
   Trash2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -45,6 +47,57 @@ export const columns: ColumnDef<ApiKey>[] = [
   {
     accessorKey: "organization",
     header: "Organization",
+  },
+  {
+    accessorKey: "key",
+    header: "API Key",
+    cell: ({ row }) => {
+      const [isVisible, setIsVisible] = useState(false);
+      const apiKey = row.getValue("key") as string;
+      const { toast } = useToast();
+
+      const copyToClipboard = () => {
+        if (apiKey) {
+          navigator.clipboard.writeText(apiKey);
+          toast({
+            title: "API key copied",
+            description: "The API key has been copied to your clipboard.",
+          });
+        }
+      };
+
+      if (!apiKey) {
+        return <span className="text-muted-foreground">Not generated</span>;
+      }
+
+      return (
+        <div className="flex items-center space-x-2">
+          <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
+            {isVisible ? apiKey : `${apiKey.substring(0, 8)}${"•".repeat(24)}`}
+          </code>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsVisible(!isVisible)}
+            className="h-8 w-8 p-0"
+          >
+            {isVisible ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={copyToClipboard}
+            className="h-8 w-8 p-0"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+        </div>
+      );
+    },
   },
   {
     accessorKey: "status",
@@ -280,7 +333,7 @@ export const columns: ColumnDef<ApiKey>[] = [
                       Processing...
                     </>
                   ) : (
-                    confirmAction?.charAt(0).toUpperCase() +
+                    confirmAction!?.charAt(0).toUpperCase() +
                     confirmAction?.slice(1)
                   )}
                 </Button>

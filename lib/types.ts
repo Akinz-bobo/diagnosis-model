@@ -98,3 +98,62 @@ export interface Subscription {
   features: string[];
   status: string; // e.g., "active", "inactive"
 }
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  billing_cycle: "monthly" | "yearly";
+  features: {
+    team_allowed: string;
+    api_keys_allowed: string;
+    real_time_api_usage_tracking: boolean;
+    developer_support: boolean;
+    support_level: string;
+    unlimited_diagnosis: boolean;
+    unlimited_api_calls: boolean;
+    analytics_dashboard: boolean;
+    priority_queue: boolean;
+  };
+  allowed_calls: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserSubscription {
+  id: string;
+  plan_name: string;
+  user_id: string;
+  organization_id?: string;
+  features: {
+    team_allowed: string;
+    api_keys_allowed: string;
+    real_time_api_usage_tracking: boolean;
+    developer_support: boolean;
+    support_level: string;
+    unlimited_diagnosis: boolean;
+    unlimited_api_calls: boolean;
+    analytics_dashboard: boolean;
+    priority_queue: boolean;
+  };
+  status: "active" | "cancelled" | "expired" | "pending";
+  created_at: string;
+  updated_at: string;
+  allowed_calls: number;
+  remaining_calls: number;
+  expires_at?: string;
+  next_billing_date?: string;
+  amount_paid?: number;
+}
+
+export interface SubscriptionStats {
+  total_subscriptions: number;
+  active_subscriptions: number;
+  expired_subscriptions: number;
+  cancelled_subscriptions: number;
+  recurring_revenue: number;
+  plan_distribution: Record<string, number>;
+  recent_purchases: UserSubscription[];
+}
