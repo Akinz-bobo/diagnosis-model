@@ -1,22 +1,19 @@
+"use client";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { DataTable } from "@/components/ui/data-table";
 import { columns } from "@/components/dashboard/users/columns";
-import { getUsers } from "@/lib/actions/users";
 import { UserRoleGate } from "@/components/auth/user-role-gate";
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
 import { Plus } from "lucide-react";
+import { useAllUsersQuery } from "@/hooks/use-user";
 
-export default async function UsersPage() {
-  // const user = await getCurrentUser();
+export default function UsersPage() {
+  const { data: users, isLoading, isError, error } = useAllUsersQuery();
 
-  // if (!user || user.role !== "admin") {
-  //   redirect("/dashboard");
-  // }
-
-  const users = await getUsers();
+  // Memoize columns to avoid unnecessary re-renders
+  const memoizedColumns = useMemo(() => columns, []);
 
   return (
     <DashboardShell>
@@ -34,12 +31,21 @@ export default async function UsersPage() {
       </DashboardHeader>
 
       <UserRoleGate allowedRoles={["admin"]}>
-        <DataTable
-          columns={columns}
-          data={users}
-          searchKey="email"
-          searchPlaceholder="Search by email..."
-        />
+        {isLoading ? (
+          <div className="p-8 text-center text-muted-foreground">
+            Loading users...
+          </div>
+        ) : isError ? (
+          <div className="p-8 text-center text-red-600">
+            {error?.message || "Failed to load users."}
+          </div>
+        ) : (
+          <DataTable
+            columns={memoizedColumns}
+            data={users || []}
+            searchKey="email"
+          />
+        )}
       </UserRoleGate>
     </DashboardShell>
   );

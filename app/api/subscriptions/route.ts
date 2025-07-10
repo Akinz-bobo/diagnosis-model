@@ -1,188 +1,112 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
-// Mock data store
-const subscriptions = [
-  {
-    id: "1",
-    userId: "2",
-    plan: "free",
-    status: "active",
-    startDate: "2023-01-01",
-    endDate: null,
-    paymentMethod: null,
-  },
-  {
-    id: "2",
-    userId: "3",
-    plan: "pro",
-    status: "active",
-    startDate: "2023-03-15",
-    endDate: null,
-    paymentMethod: "card_1234",
-  },
-  {
-    id: "3",
-    userId: "4",
-    plan: "enterprise",
-    status: "active",
-    startDate: "2023-02-10",
-    endDate: null,
-    paymentMethod: "card_5678",
-  },
-];
+export enum SubscriptionStatus {
+  active = "active",
+  inactive = "inactive",
+  cancelled = "cancelled",
+}
 
-// GET /api/subscriptions - Get subscription information
+export type SubscriptionFeatures = {
+  team_allowed?: string;
+  api_keys_allowed?: string;
+  real_time_api_usage_tracking?: boolean;
+  developer_support?: boolean;
+  support_level?: string;
+  unlimited_diagnosis?: boolean;
+  unlimited_api_calls?: boolean;
+  analytics_dashboard?: boolean;
+  priority_queue?: boolean;
+  [key: string]: any;
+};
+
+export type Subscription = {
+  id: string;
+  plan_name: string;
+  user_id: string;
+  organization_id?: string | null;
+  features?: SubscriptionFeatures | null;
+  status: SubscriptionStatus;
+  created_at: string;
+  updated_at: string;
+  allowed_calls: number;
+  remaining_calls: number;
+};
+
+export type SubscriptionCreate = {
+  plan_name: string;
+  user_id: string;
+};
+
+// GET /api/subscriptions - Get all subscriptions
 export async function GET(request: NextRequest) {
   try {
-    // Get query parameters
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
+    const session = await auth();
+    const token = session?.accessToken;
+    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/subscription/all`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
       return NextResponse.json(
-        { message: "User ID is required" },
-        { status: 400 }
+        { message: errorData?.message || "Failed to fetch subscriptions" },
+        { status: res.status }
       );
     }
-
-    // Find subscription for the user
-    const subscription = subscriptions.find((sub) => sub.userId === userId);
-
-    if (!subscription) {
-      // Return a default free subscription if none exists
-      return NextResponse.json({
-        id: null,
-        userId,
-        plan: "free",
-        status: "active",
-        startDate: new Date().toISOString().split("T")[0],
-        endDate: null,
-        paymentMethod: null,
-      });
-    }
-
-    return NextResponse.json(subscription);
+    const subscriptions: Subscription[] = await res.json();
+    return NextResponse.json(subscriptions);
   } catch (error) {
-    console.error("Error fetching subscription:", error);
+    console.error("Error fetching subscriptions:", error);
     return NextResponse.json(
-      { message: "Failed to fetch subscription" },
+      { message: "Failed to fetch subscriptions" },
       { status: 500 }
     );
   }
 }
 
-// POST /api/subscriptions - Create or update a subscription
+// POST /api/subscriptions - Create a new subscription
 export async function POST(request: NextRequest) {
   try {
-    const data = await request.json();
+    const data: SubscriptionCreate = await request.json();
+    const session = await auth();
+    const token = session?.accessToken;
 
-    // Validate required fields
-    if (!data.userId || !data.plan) {
+    if (!data.plan_name || !data.user_id) {
       return NextResponse.json(
-        { message: "User ID and plan are required" },
+        { message: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Find existing subscription
-    const subscriptionIndex = subscriptions.findIndex(
-      (sub) => sub.userId === data.userId
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/subscription/new`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        method: "POST",
+        body: JSON.stringify(data),
+      }
     );
 
-    if (subscriptionIndex !== -1) {
-      // Update existing subscription
-      subscriptions[subscriptionIndex] = {
-        ...subscriptions[subscriptionIndex],
-        plan: data.plan,
-        status: "active",
-        startDate: new Date().toISOString().split("T")[0],
-        paymentMethod:
-          data.paymentMethodId ||
-          subscriptions[subscriptionIndex].paymentMethod,
-      };
-
-      return NextResponse.json(subscriptions[subscriptionIndex]);
-    } else {
-      // Create new subscription
-      const newSubscription = {
-        id: `sub-${Date.now()}`,
-        userId: data.userId,
-        plan: data.plan,
-        status: "active",
-        startDate: new Date().toISOString().split("T")[0],
-        endDate: null,
-        paymentMethod: data.paymentMethodId || null,
-      };
-
-      subscriptions.push(newSubscription);
-      return NextResponse.json(newSubscription, { status: 201 });
-    }
-  } catch (error) {
-    console.error("Error creating/updating subscription:", error);
-    return NextResponse.json(
-      { message: "Failed to create/update subscription" },
-      { status: 500 }
-    );
-  }
-}
-
-// PUT /api/subscriptions - Cancel a subscription
-export async function PUT(request: NextRequest) {
-  try {
-    const data = await request.json();
-
-    // Validate required fields
-    if (!data.userId || !data.action) {
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
       return NextResponse.json(
-        { message: "User ID and action are required" },
-        { status: 400 }
+        { message: errorData?.message || "Failed to create subscription" },
+        { status: res.status }
       );
     }
 
-    // Find subscription
-    const subscriptionIndex = subscriptions.findIndex(
-      (sub) => sub.userId === data.userId
-    );
-
-    if (subscriptionIndex === -1) {
-      return NextResponse.json(
-        { message: "Subscription not found" },
-        { status: 404 }
-      );
-    }
-
-    // Handle different actions
-    switch (data.action) {
-      case "cancel":
-        // Update subscription
-        subscriptions[subscriptionIndex] = {
-          ...subscriptions[subscriptionIndex],
-          status: "cancelled",
-          endDate: new Date().toISOString().split("T")[0],
-        };
-
-        return NextResponse.json(subscriptions[subscriptionIndex]);
-
-      case "reactivate":
-        // Update subscription
-        subscriptions[subscriptionIndex] = {
-          ...subscriptions[subscriptionIndex],
-          status: "active",
-          endDate: null,
-        };
-
-        return NextResponse.json(subscriptions[subscriptionIndex]);
-
-      default:
-        return NextResponse.json(
-          { message: "Invalid action" },
-          { status: 400 }
-        );
-    }
+    const newSubscription: Subscription = await res.json();
+    return NextResponse.json(newSubscription, { status: 201 });
   } catch (error) {
-    console.error("Error updating subscription:", error);
+    console.error("Error creating subscription:", error);
     return NextResponse.json(
-      { message: "Failed to update subscription" },
+      { message: "Failed to create subscription" },
       { status: 500 }
     );
   }

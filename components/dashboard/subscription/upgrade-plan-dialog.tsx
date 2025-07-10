@@ -19,9 +19,9 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, Zap, Crown, Star } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import type { UserSubscription, SubscriptionPlan } from "@/lib/types";
+import { toast } from "sonner";
 
 interface UpgradePlanDialogProps {
   open: boolean;
@@ -29,6 +29,7 @@ interface UpgradePlanDialogProps {
   currentPlan: UserSubscription;
   availablePlans: SubscriptionPlan[];
   onUpgrade: (plan: SubscriptionPlan) => void;
+  onUpgradeRequest: (plan: SubscriptionPlan) => Promise<void>;
 }
 
 export function UpgradePlanDialog({
@@ -37,12 +38,12 @@ export function UpgradePlanDialog({
   currentPlan,
   availablePlans,
   onUpgrade,
+  onUpgradeRequest,
 }: UpgradePlanDialogProps) {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   const handleUpgrade = async () => {
     if (!selectedPlan) return;
@@ -50,22 +51,15 @@ export function UpgradePlanDialog({
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log("Upgrading to plan:", selectedPlan);
+      await onUpgradeRequest(selectedPlan);
 
       onUpgrade(selectedPlan);
       onOpenChange(false);
 
-      toast({
-        title: "Plan upgraded successfully",
-        description: `You've been upgraded to the ${selectedPlan.name} plan.`,
-      });
+      toast.success("Plan upgraded successfully");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to upgrade plan. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to upgrade plan. Please try again.");
     } finally {
       setIsLoading(false);
     }

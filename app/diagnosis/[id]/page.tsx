@@ -14,7 +14,7 @@ export default async function DiagnosisDetailPage({
   const diagnosis = await getDiagnosis(params.id);
 
   if (!diagnosis) {
-    notFound();
+    return <p>Diagnosis not found</p>;
   }
 
   return <DiagnosisDetailClient diagnosis={diagnosis} />;

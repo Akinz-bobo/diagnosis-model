@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-type UserProfile = {
+export type UserProfile = {
   id: string;
   email: string;
   full_name: string;
@@ -19,51 +19,53 @@ type UserProfile = {
   organization_id: string | null;
 };
 
+// GET /api/users - Get all users (admin only)
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    if (!session?.accessToken) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/me`,
-      {
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`,
-        },
-      }
-    );
-
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "";
+    const res = await fetch(`${base}/api/v1/users`, {
+      headers: {
+        Authorization: `Bearer ${session.accessToken}`,
+      },
+    });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       return NextResponse.json(
-        { message: errorData?.message || "Failed to fetch user" },
+        {
+          message:
+            errorData?.detail || errorData?.message || "Failed to fetch users",
+        },
         { status: res.status }
       );
     }
-
-    const result = await res.json();
-
-    // Type guard to ensure result matches UserProfile
+    const users = await res.json();
+    if (!Array.isArray(users)) {
+      return NextResponse.json(
+        { message: "Invalid users response" },
+        { status: 500 }
+      );
+    }
+    // Type guard for UserProfile[]
     const isUserProfile = (data: any): data is UserProfile =>
       data &&
       typeof data.id === "string" &&
       typeof data.email === "string" &&
       typeof data.full_name === "string";
-
-    if (!isUserProfile(result)) {
+    if (!users.every(isUserProfile)) {
       return NextResponse.json(
-        { message: "Invalid user profile response" },
+        { message: "Invalid user profile in response" },
         { status: 500 }
       );
     }
-
-    return NextResponse.json(result as UserProfile);
+    return NextResponse.json(users as UserProfile[]);
   } catch (error) {
-    console.error("Error fetching user:", error);
+    console.error("Error fetching users:", error);
     return NextResponse.json(
-      { message: "Failed to fetch user" },
+      { message: "Failed to fetch users" },
       { status: 500 }
     );
   }

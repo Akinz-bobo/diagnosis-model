@@ -4,7 +4,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import type { User } from "@/lib/types";
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateUserProfile } from "@/lib/actions/users";
+import { UserProfile } from "@/lib/api/user";
 
 const profileFormSchema = z.object({
   name: z
@@ -40,16 +41,16 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-export function ProfileForm({ user }: { user: User }) {
+export function ProfileForm({ user }: { user: UserProfile }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      name: user.name || "",
+      name: user.full_name || "",
       email: user.email || "",
       bio: user.bio || "",
-      avatarUrl: user.avatarUrl || "",
+      avatarUrl: user.full_name || "",
     },
     mode: "onChange",
   });
@@ -87,8 +88,11 @@ export function ProfileForm({ user }: { user: User }) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="flex items-center gap-x-6">
           <Avatar className="h-20 w-20">
-            <AvatarImage src={user.avatarUrl || ""} alt={user.name || "User"} />
-            <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+            <AvatarImage
+              src={user?.image || ""}
+              alt={user.full_name || "User"}
+            />
+            <AvatarFallback>{user.full_name?.charAt(0) || "U"}</AvatarFallback>
           </Avatar>
           <div>
             <Button variant="outline" size="sm" type="button">

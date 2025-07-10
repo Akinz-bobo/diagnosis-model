@@ -1,7 +1,4 @@
 "use client";
-
-import type React from "react";
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -17,92 +14,69 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Loader2,
-  X,
-  Upload,
-  AlertCircle,
-  Share2,
-  ArrowRight,
-} from "lucide-react";
+import { Loader2, X, Upload, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SpecialistContactModal } from "@/components/diagnosis/specialist-contact-modal";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { useSession } from "next-auth/react";
-import { DiagnosisResult as DiagnosticApiResult } from "@/types";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 
-// Define the form schema with Zod
-const historySchema = z.object({
-  Species: z.string().min(1, { message: "Species is required" }),
-  Age: z.string().min(1, { message: "Age is required" }),
-  "Clinical Signs": z
-    .string()
-    .min(1, { message: "Clinical signs are required" }),
-  "Post-Mortem Findings": z
-    .string()
-    .min(1, { message: "Post-mortem findings are required" }),
-  "Total Birds in Farm": z.coerce
-    .number()
-    .min(1, { message: "Total birds must be at least 1" }),
-  "Total Affected": z.coerce
-    .number()
-    .min(0, { message: "Total affected must be a positive number" }),
-  "Total Deaths": z.coerce
-    .number()
-    .min(0, { message: "Total deaths must be a positive number" }),
-});
+const historySchema = z
+  .object({
+    Species: z.literal("Chicken"),
+    Age: z.string().min(1, { message: "Age is required" }),
+    "Clinical Signs": z
+      .string()
+      .min(1, { message: "Clinical signs are required" }),
+    "Post-Mortem Findings": z
+      .string()
+      .min(1, { message: "Post-mortem findings are required" }),
+    "Total Birds in Farm": z.coerce
+      .number()
+      .min(1, { message: "Total birds must be at least 1" }),
+    "Total Affected": z.coerce
+      .number()
+      .min(0, { message: "Total affected must be a positive number" }),
+    "Total Deaths": z.coerce
+      .number()
+      .min(0, { message: "Total deaths must be a positive number" }),
+  })
+  .refine((data) => data["Total Affected"] <= data["Total Birds in Farm"], {
+    message: "Total affected cannot exceed total birds in farm",
+    path: ["Total Affected"],
+  })
+  .refine((data) => data["Total Deaths"] <= data["Total Affected"], {
+    message: "Total deaths cannot exceed total affected",
+    path: ["Total Deaths"],
+  })
+  .refine((data) => data["Total Deaths"] <= data["Total Birds in Farm"], {
+    message: "Total deaths cannot exceed total birds in farm",
+    path: ["Total Deaths"],
+  });
 
 type HistoryFormValues = z.infer<typeof historySchema>;
-
-interface DiagnoseError {
-  message: string;
-}
-interface ProcessedImage {
-  url: string;
-  lesions: string[];
-  relevance: Record<string, number>;
-}
-
-interface DiagnosisResult {
-  predicted_class: string;
-  confidence: number;
-  gpt_background: string;
-  processed_images?: ProcessedImage[];
-  differential_diagnoses?: string[];
-  conclusion?: string;
-}
 
 export default function DiagnosisPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSpecialistModalOpen, setIsSpecialistModalOpen] = useState(false);
-
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-  const [diagnosisResult, setDiagnosisResult] =
-    useState<DiagnosisResult | null>(null);
-  const { data: session, status } = useSession();
-  const user = session?.user;
-  // Initialize the form
+  const [diagnosisResult, setDiagnosisResult] = useState<any>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalIndex, setModalIndex] = useState(0);
   const form = useForm<HistoryFormValues>({
     resolver: zodResolver(historySchema),
     defaultValues: {
-      Species: "",
+      Species: "Chicken",
       Age: "",
       "Clinical Signs": "",
       "Post-Mortem Findings": "",
@@ -111,134 +85,78 @@ export default function DiagnosisPage() {
       "Total Deaths": 0,
     },
   });
+  const router = useRouter();
 
-  // Handle image selection
+  // Image handlers (unchanged)
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newImages = Array.from(e.target.files);
       setSelectedImages((prevImages) => [...prevImages, ...newImages]);
-
-      // Create preview URLs for the images
       const newImageUrls = newImages.map((image) => {
-        // Ensure we're creating valid object URLs
         try {
           return URL.createObjectURL(image);
-        } catch (error) {
-          console.error("Error creating object URL:", error);
+        } catch {
           return "";
         }
       });
-
       setImagePreviewUrls((prevUrls) => [...prevUrls, ...newImageUrls]);
-
-      // Log for debugging
-      console.log("Selected images:", newImages);
-      console.log("Preview URLs:", newImageUrls);
     }
   };
-
-  // Remove an image from the selection
   const removeImage = (index: number) => {
-    // Store the URL before removing it from the array
     const urlToRevoke = imagePreviewUrls[index];
-
     setSelectedImages((prevImages) => prevImages.filter((_, i) => i !== index));
     setImagePreviewUrls((prevUrls) => prevUrls.filter((_, i) => i !== index));
-
-    // Revoke the object URL to avoid memory leaks
     if (urlToRevoke) {
       try {
         URL.revokeObjectURL(urlToRevoke);
-      } catch (error) {
-        console.error("Error revoking object URL:", error);
-      }
+      } catch {}
     }
   };
-
-  // Clear all selected images
   const clearAllImages = () => {
-    // Revoke all object URLs to avoid memory leaks
     imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
     setSelectedImages([]);
     setImagePreviewUrls([]);
   };
 
-  // Handle form submission
   async function onSubmit(data: HistoryFormValues) {
+    setFormError(null);
     if (selectedImages.length === 0) {
-      toast.error("Please upload at least one image for diagnosis");
+      setFormError("Please upload at least one image for diagnosis");
       return;
     }
-
     setIsLoading(true);
     setDiagnosisResult(null);
-
     try {
-      // Create a FormData object to send multipart/form-data
       const formData = new FormData();
-
-      // Append each image to the FormData
       selectedImages.forEach((image) => {
         formData.append("images", image);
       });
-
-      // Append the history data as a JSON string
       formData.append("history", JSON.stringify(data));
-      console.log(formData);
-
       const response = await fetch(`/api/diagnosis/predict`, {
         method: "POST",
         body: formData,
       });
       if (!response.ok) {
-      }
-      const result: DiagnosticApiResult | DiagnoseError = await response.json();
-      console.log(result);
-      if ("message" in result && result.message === "Diagnosis failed") {
-        toast.error(`${result.message}: The diagnosis was not successful`);
+        setFormError("Failed to get diagnosis. Please try again.");
         setIsLoading(false);
         return;
       }
-
-      // Only proceed if result is DiagnosticApiResult (has 'diagnosis' property)
-      if ("diagnosis" in result && "clinical_context" in result) {
-        setDiagnosisResult({
-          predicted_class: result.diagnosis.disease,
-          confidence: result.diagnosis.confidence,
-          differential_diagnoses: result.diagnosis.differential_diagnoses,
-          gpt_background: result.clinical_context.background,
-          conclusion: result.clinical_context.conclusion,
-          processed_images: result.image_analysis.processed_images.map(
-            (image) => ({
-              url: image.url,
-              relevance: image.relevance,
-              lesions: image.lesions,
-            })
-          ),
-        });
-        setIsLoading(false);
-
+      const result = await response.json();
+      if (result && result.id) {
         toast("Your diagnosis has been successfully processed.");
+        router.push(`/diagnosis/${result.id}`);
+      } else {
+        setFormError("Diagnosis failed. Please try again.");
       }
-      // }, 2000); // Simulate network delay
+      setIsLoading(false);
     } catch (error) {
-      console.error("Diagnosis error:", error);
-      toast.error(
+      setFormError(
         error instanceof Error
           ? error.message
           : "Failed to get diagnosis. Please try again."
       );
       setIsLoading(false);
     }
-  }
-
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
-        <p className="mt-4 text-muted-foreground">Checking authentication...</p>
-      </div>
-    );
   }
 
   return (
@@ -254,7 +172,6 @@ export default function DiagnosisPage() {
               accurate diagnosis
             </p>
           </div>
-
           <div className="grid gap-8 md:grid-cols-2">
             {/* Image Upload Section */}
             <Card>
@@ -280,7 +197,6 @@ export default function DiagnosisPage() {
                     />
                   </div>
                 </div>
-
                 {imagePreviewUrls.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex justify-between">
@@ -300,7 +216,11 @@ export default function DiagnosisPage() {
                       {imagePreviewUrls.map((url, index) => (
                         <div
                           key={index}
-                          className="relative rounded-md overflow-hidden h-24 bg-muted"
+                          className="relative rounded-md overflow-hidden h-24 bg-muted cursor-pointer"
+                          onClick={() => {
+                            setModalIndex(index);
+                            setModalOpen(true);
+                          }}
                         >
                           {url ? (
                             <img
@@ -308,10 +228,6 @@ export default function DiagnosisPage() {
                               alt={`Preview ${index + 1}`}
                               className="h-full w-full object-cover"
                               onError={(e) => {
-                                console.error(
-                                  `Error loading image ${index}:`,
-                                  e
-                                );
                                 e.currentTarget.src =
                                   "/placeholder.svg?height=100&width=100";
                               }}
@@ -324,7 +240,10 @@ export default function DiagnosisPage() {
                           )}
                           <button
                             type="button"
-                            onClick={() => removeImage(index)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeImage(index);
+                            }}
                             className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
                           >
                             <X className="h-4 w-4" />
@@ -334,7 +253,6 @@ export default function DiagnosisPage() {
                     </div>
                   </div>
                 )}
-
                 {selectedImages.length === 0 && (
                   <Alert variant="destructive" className="mt-4">
                     <AlertCircle className="h-4 w-4" />
@@ -344,9 +262,15 @@ export default function DiagnosisPage() {
                     </AlertDescription>
                   </Alert>
                 )}
+                {formError && (
+                  <Alert variant="destructive" className="mt-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{formError}</AlertDescription>
+                  </Alert>
+                )}
               </CardContent>
             </Card>
-
             {/* Clinical History Form */}
             <Card>
               <CardHeader>
@@ -357,30 +281,19 @@ export default function DiagnosisPage() {
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  <form className="space-y-4">
+                  <form
+                    className="space-y-4"
+                    onSubmit={form.handleSubmit(onSubmit)}
+                  >
                     <FormField
                       control={form.control}
                       name="Species"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Species</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select species" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Chicken">Chicken</SelectItem>
-                              <SelectItem value="Duck">Duck</SelectItem>
-                              <SelectItem value="Turkey">Turkey</SelectItem>
-                              <SelectItem value="Goose">Goose</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Input value="Chicken" readOnly disabled />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -471,284 +384,73 @@ export default function DiagnosisPage() {
                         )}
                       />
                     </div>
+                    <Button
+                      type="submit"
+                      className="w-full px-8 py-6 text-lg bg-teal-600 hover:bg-teal-700"
+                      disabled={isLoading || selectedImages.length === 0}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        "Get Diagnosis"
+                      )}
+                    </Button>
                   </form>
                 </Form>
               </CardContent>
             </Card>
           </div>
-
-          <div className="mt-8 flex justify-center">
-            <Button
-              onClick={form.handleSubmit(onSubmit)}
-              className="px-8 py-6 text-lg bg-teal-600 hover:bg-teal-700"
-              disabled={isLoading || selectedImages.length === 0}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Get Diagnosis"
-              )}
-            </Button>
-          </div>
-
-          {/* Enhanced Diagnosis Results */}
-          {diagnosisResult && (
-            <Card className="mt-12 overflow-hidden border-teal-200 shadow-lg">
-              <CardHeader className="bg-teal-50 dark:bg-teal-900/20 border-b border-teal-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-2xl">
-                      Diagnosis Results
-                    </CardTitle>
-                    <CardDescription>
-                      AI-assisted veterinary diagnosis
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => setIsSpecialistModalOpen(true)}
-                  >
-                    <Share2 className="h-4 w-4" />
-                    Contact a Specialist
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Tabs defaultValue="diagnosis" className="w-full">
-                  <div className="border-b px-6">
-                    <TabsList className="w-full justify-start h-14">
-                      <TabsTrigger
-                        value="diagnosis"
-                        className="data-[state=active]:bg-teal-50 dark:data-[state=active]:bg-teal-900/20"
-                      >
-                        Tentative Diagnosis
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="analysis"
-                        className="data-[state=active]:bg-teal-50 dark:data-[state=active]:bg-teal-900/20"
-                      >
-                        Analysis Process
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="conclusion"
-                        className="data-[state=active]:bg-teal-50 dark:data-[state=active]:bg-teal-900/20"
-                      >
-                        Conclusion
-                      </TabsTrigger>
-                    </TabsList>
-                  </div>
-
-                  {/* Diagnosis Tab */}
-                  <TabsContent value="diagnosis" className="p-6 space-y-6">
-                    <div className="flex flex-col md:flex-row gap-6">
-                      <div className="flex-1">
-                        <div className="rounded-lg bg-teal-50 dark:bg-teal-900/10 p-6 space-y-4">
-                          <div className="space-y-2">
-                            <h3 className="text-sm font-medium text-muted-foreground">
-                              Tentative Diagnosis
-                            </h3>
-                            <div className="flex items-center gap-2">
-                              <h2 className="text-2xl font-bold text-teal-700 dark:text-teal-500">
-                                {diagnosisResult.predicted_class}
-                              </h2>
-                              <Badge
-                                variant="outline"
-                                className="bg-yellow-50 text-yellow-700 border-yellow-200"
-                              >
-                                Tentative
-                              </Badge>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <h3 className="text-sm font-medium text-muted-foreground">
-                              Confidence
-                            </h3>
-                            <div className="flex items-center gap-3">
-                              <div className="h-2 w-full max-w-[200px] rounded-full bg-gray-200">
-                                <div
-                                  className="h-2 rounded-full bg-teal-600"
-                                  style={{
-                                    width: `${
-                                      diagnosisResult.confidence * 100
-                                    }%`,
-                                  }}
-                                ></div>
-                              </div>
-                              <span className="font-bold">
-                                {(diagnosisResult.confidence * 100).toFixed(1)}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-6">
-                          <h3 className="text-lg font-medium mb-3">
-                            Differential Diagnoses
-                          </h3>
-                          <ul className="space-y-2">
-                            {diagnosisResult.differential_diagnoses?.map(
-                              (diagnosis, index) => (
-                                <li
-                                  key={index}
-                                  className="flex items-center gap-2 p-3 rounded-md bg-gray-50 dark:bg-gray-800/50"
-                                >
-                                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 text-xs font-medium">
-                                    {index + 1}
-                                  </span>
-                                  <span>{diagnosis}</span>
-                                </li>
-                              )
-                            )}
-                          </ul>
-                        </div>
-                      </div>
-
-                      <div className="flex-1">
-                        <h3 className="text-lg font-medium mb-3">
-                          Background Information
-                        </h3>
-                        <div className="rounded-lg bg-gray-50 dark:bg-gray-800/50 p-4">
-                          <p className="text-sm leading-relaxed">
-                            {diagnosisResult.gpt_background}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  {/* Analysis Process Tab */}
-                  <TabsContent value="analysis" className="p-6 space-y-6">
-                    <h3 className="text-xl font-medium">
-                      Image Analysis Process
-                    </h3>
-                    <p className="text-muted-foreground">
-                      The AI system analyzed the following images to identify
-                      lesions and determine their relevance to the diagnosis.
-                    </p>
-
-                    <div className="space-y-8">
-                      {diagnosisResult.processed_images?.map((image, index) => (
-                        <div
-                          key={index}
-                          className="border rounded-lg overflow-hidden"
-                        >
-                          <div className="bg-gray-50 dark:bg-gray-800/50 p-4 border-b">
-                            <h4 className="font-medium">
-                              Image {index + 1} Analysis
-                            </h4>
-                          </div>
-                          <div className="grid md:grid-cols-2 gap-6 p-6">
-                            <div>
-                              <div className="rounded-lg overflow-hidden border bg-muted h-[300px] flex items-center justify-center">
-                                <Image
-                                  src={image.url || "/placeholder.svg"}
-                                  width={500}
-                                  height={400}
-                                  alt={`Processed image ${index + 1}`}
-                                  className="max-h-full max-w-full object-contain"
-                                  onError={(e) => {
-                                    e.currentTarget.src =
-                                      "/placeholder.svg?height=300&width=400";
-                                  }}
-                                />
-                              </div>
-                            </div>
-                            <div className="space-y-4">
-                              <div>
-                                <h5 className="text-sm font-medium text-muted-foreground mb-2">
-                                  Identified Lesions
-                                </h5>
-                                <ul className="space-y-2">
-                                  {image.lesions.map((lesion, i) => (
-                                    <li
-                                      key={i}
-                                      className="flex items-start gap-2"
-                                    >
-                                      <div className="mt-1 flex-shrink-0">
-                                        <div className="h-2 w-2 rounded-full bg-teal-500"></div>
-                                      </div>
-                                      <span>{lesion}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <h5 className="text-sm font-medium text-muted-foreground mb-2">
-                                  Relevance to Diagnosis
-                                </h5>
-                                <ul className="text-sm space-y-1">
-                                  {Object.entries(image.relevance).map(
-                                    ([key, value]) => (
-                                      <li key={key}>
-                                        <span className="font-medium">
-                                          {key}:
-                                        </span>{" "}
-                                        {value}
-                                      </li>
-                                    )
-                                  )}
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
-
-                  {/* Conclusion Tab */}
-                  <TabsContent value="conclusion" className="p-6">
-                    <div className="rounded-lg border bg-gray-50 dark:bg-gray-800/50 p-6">
-                      <h3 className="text-xl font-medium mb-4">
-                        Diagnostic Conclusion
-                      </h3>
-                      <p className="leading-relaxed mb-6">
-                        {diagnosisResult.conclusion}
-                      </p>
-
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h4 className="text-yellow-800 font-medium mb-2 flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4" />
-                          Important Note
-                        </h4>
-                        <p className="text-yellow-700 text-sm">
-                          This is a tentative diagnosis based on AI analysis of
-                          the provided images and clinical history. For
-                          confirmation, laboratory testing is recommended.
-                          Consider consulting with a specialist for further
-                          evaluation and treatment recommendations.
-                        </p>
-                      </div>
-
-                      <div className="mt-6 flex justify-end">
-                        <Button
-                          onClick={() => setIsSpecialistModalOpen(true)}
-                          className="bg-teal-600 hover:bg-teal-700"
-                        >
-                          Contact a Specialist
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </main>
-
-      {/* Specialist Contact Modal */}
       <SpecialistContactModal
         open={isSpecialistModalOpen}
         onOpenChange={setIsSpecialistModalOpen}
         diagnosisResult={diagnosisResult}
       />
+      {/* Modal for expanded image preview */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-2xl w-full flex flex-col items-center p-0 sm:p-4">
+          <div className="relative w-full flex items-center justify-center min-h-[40vh] md:min-h-[60vh]">
+            <button
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-white/80 rounded-full shadow hover:bg-white z-10"
+              onClick={() =>
+                setModalIndex((prev) =>
+                  prev > 0 ? prev - 1 : imagePreviewUrls.length - 1
+                )
+              }
+              aria-label="Previous image"
+            >
+              <ChevronLeft className="h-8 w-8" />
+            </button>
+            <Image
+              width={1200}
+              height={1200}
+              src={imagePreviewUrls[modalIndex]}
+              alt={`Preview ${modalIndex + 1}`}
+              className=" min-h-[35vh] w-full rounded shadow-lg object-contain  bg-black"
+              style={{ background: "#000" }}
+              priority
+            />
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white/80 rounded-full shadow hover:bg-white z-10"
+              onClick={() =>
+                setModalIndex((prev) =>
+                  prev < imagePreviewUrls.length - 1 ? prev + 1 : 0
+                )
+              }
+              aria-label="Next image"
+            >
+              <ChevronRight className="h-8 w-8" />
+            </button>
+          </div>
+          <div className="pb-2 text-center text-sm text-muted-foreground">
+            Image {modalIndex + 1} of {imagePreviewUrls.length}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

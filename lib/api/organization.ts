@@ -19,6 +19,10 @@ export type Organization = {
   owner_id: string | null;
   created_at: string;
   updated_at: string;
+  diagnosis_growth: number | null;
+  diagnosis_count: number | null;
+  api_call_growth: number | null;
+  api_call_count: number | null;
   team?: TeamOut | null;
 };
 
@@ -50,8 +54,12 @@ export async function createOrganization(
 }
 
 // Get organization by ID
-export async function fetchOrganizationById(orgId: string): Promise<Organization> {
-  const res = await fetch(`/api/organizations/${orgId}`, { credentials: "include" });
+export async function fetchOrganizationById(
+  orgId: string
+): Promise<Organization> {
+  const res = await fetch(`/api/organizations/${orgId}`, {
+    credentials: "include",
+  });
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error?.message || "Failed to fetch organization");

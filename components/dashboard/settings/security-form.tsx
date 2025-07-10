@@ -4,7 +4,6 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import type { User } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -19,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { updateUserPassword, enable2FA } from "@/lib/actions/users";
+import { UserProfile } from "@/lib/api/user";
 
 const securityFormSchema = z
   .object({
@@ -31,7 +31,6 @@ const securityFormSchema = z
     confirmPassword: z.string().min(8, {
       message: "Password must be at least 8 characters.",
     }),
-    twoFactorEnabled: z.boolean().default(false),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: "Passwords don't match",
@@ -40,9 +39,10 @@ const securityFormSchema = z
 
 type SecurityFormValues = z.infer<typeof securityFormSchema>;
 
-export function SecurityForm({ user }: { user: User }) {
+export function SecurityForm({ user }: { user: UserProfile }) {
   const [isLoading, setIsLoading] = useState(false);
   const [is2FALoading, setIs2FALoading] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(user.twoFactorEnabled || false);
 
   const form = useForm<SecurityFormValues>({
     resolver: zodResolver(securityFormSchema),
@@ -50,32 +50,23 @@ export function SecurityForm({ user }: { user: User }) {
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
-      twoFactorEnabled: user.twoFactorEnabled || false,
     },
     mode: "onChange",
   });
 
   async function onSubmit(data: SecurityFormValues) {
     setIsLoading(true);
-
     try {
       await updateUserPassword({
         userId: user.id,
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
-
       toast({
         title: "Password updated",
         description: "Your password has been updated successfully.",
       });
-
-      form.reset({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-        twoFactorEnabled: data.twoFactorEnabled,
-      });
+      form.reset();
     } catch (error) {
       console.error("Error updating password:", error);
       toast({
@@ -91,21 +82,18 @@ export function SecurityForm({ user }: { user: User }) {
 
   async function handleToggle2FA(enabled: boolean) {
     setIs2FALoading(true);
-
     try {
       await enable2FA({
         userId: user.id,
         enabled,
       });
-
       toast({
         title: enabled ? "2FA Enabled" : "2FA Disabled",
         description: enabled
           ? "Two-factor authentication has been enabled for your account."
           : "Two-factor authentication has been disabled for your account.",
       });
-
-      form.setValue("twoFactorEnabled", enabled);
+      setTwoFactorEnabled(enabled);
     } catch (error) {
       console.error("Error toggling 2FA:", error);
       toast({
@@ -114,7 +102,7 @@ export function SecurityForm({ user }: { user: User }) {
         variant: "destructive",
       });
       // Revert the toggle
-      form.setValue("twoFactorEnabled", !enabled);
+      setTwoFactorEnabled((prev) => !prev);
     } finally {
       setIs2FALoading(false);
     }
@@ -179,7 +167,7 @@ export function SecurityForm({ user }: { user: User }) {
         <h4 className="text-sm font-medium">Two-Factor Authentication (2FA)</h4>
         <div className="flex items-center space-x-2">
           <Switch
-            checked={form.watch("twoFactorEnabled")}
+            checked={twoFactorEnabled}
             onCheckedChange={handleToggle2FA}
             disabled={is2FALoading}
             id="two-factor"
@@ -188,7 +176,7 @@ export function SecurityForm({ user }: { user: User }) {
             htmlFor="two-factor"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            {form.watch("twoFactorEnabled") ? "Enabled" : "Disabled"}
+            {twoFactorEnabled ? "Enabled" : "Disabled"}
           </label>
         </div>
         <p className="text-sm text-muted-foreground">

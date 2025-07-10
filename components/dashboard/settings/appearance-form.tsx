@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/components/ui/use-toast";
 import { updateUserAppearance } from "@/lib/actions/users";
 import { useTheme } from "next-themes";
+import { UserProfile } from "@/lib/api/user";
 
 const appearanceFormSchema = z.object({
   theme: z.enum(["light", "dark", "system"], {
@@ -28,7 +29,7 @@ const appearanceFormSchema = z.object({
 
 type AppearanceFormValues = z.infer<typeof appearanceFormSchema>;
 
-export function AppearanceForm({ user }: { user: User }) {
+export function AppearanceForm({ user }: { user: UserProfile }) {
   const [isLoading, setIsLoading] = useState(false);
   const { setTheme } = useTheme();
 

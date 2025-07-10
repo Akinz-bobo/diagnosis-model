@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { useMemo } from "react";
 import { APIKeyOutFull } from "@/lib/api/api-key";
+import { Loader2 } from "lucide-react";
 
 // Helper to coerce APIKeyOutFull to the expected table type
 function toTableApiKey(apiKey: APIKeyOutFull) {
@@ -93,7 +94,12 @@ export default function ApiKeysPage() {
           </TabsList>
 
           <TabsContent value="active" className="space-y-4">
-            {activeApiKeys.length > 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-2">Loading...</span>
+              </div>
+            ) : activeApiKeys.length > 0 ? (
               <DataTable
                 columns={columns}
                 data={activeApiKeys}
@@ -114,7 +120,12 @@ export default function ApiKeysPage() {
           </TabsContent>
 
           <TabsContent value="inactive" className="space-y-4">
-            {inactiveApiKeys.length > 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-2">Loading...</span>
+              </div>
+            ) : inactiveApiKeys.length > 0 ? (
               <DataTable
                 columns={columns}
                 data={inactiveApiKeys}
@@ -145,7 +156,12 @@ export default function ApiKeysPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {activeApiKeys.length > 0 ? (
+              {isLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <span className="ml-2">Loading...</span>
+                </div>
+              ) : activeApiKeys.length > 0 ? (
                 <div className="space-y-4">
                   {activeApiKeys.map((apiKey) => (
                     <div key={apiKey.id} className="rounded-lg border p-4">
@@ -183,8 +199,7 @@ export default function ApiKeysPage() {
                         </code>
                       </div>
                       <div className="mt-2 text-xs text-muted-foreground">
-                        Created on {apiKey.created} • Last used{" "}
-                        {apiKey.lastUsed} • {apiKey.usageCount} API calls
+                        Created on {apiKey.created} • Last used {apiKey.lastUsed} • {apiKey.usageCount} API calls
                       </div>
                     </div>
                   ))}
@@ -228,7 +243,12 @@ export default function ApiKeysPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {inactiveApiKeys.length > 0 ? (
+              {isLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <span className="ml-2">Loading...</span>
+                </div>
+              ) : inactiveApiKeys.length > 0 ? (
                 <div className="space-y-4">
                   {inactiveApiKeys.map((apiKey) => (
                     <div key={apiKey.id} className="rounded-lg border p-4">

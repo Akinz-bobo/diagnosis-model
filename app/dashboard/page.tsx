@@ -17,9 +17,30 @@ import { UserRoleGate } from "@/components/auth/user-role-gate";
 import { UserStats } from "@/components/dashboard/user-stats";
 import { useCurrentUserQuery } from "@/hooks/use-user";
 import { Loader2 } from "lucide-react";
+import { useUsersByOrganizationQuery } from "@/hooks/use-user";
+import { useOrganizationQuery } from "@/hooks/use-organization";
+import { useApiKeysQuery } from "@/hooks/use-api-key";
 
 export default function DashboardPage() {
   const { data: user, isLoading, error } = useCurrentUserQuery();
+  // Fetch organization and members if user is org_admin or user
+  const orgId = user?.organization_id;
+  const isOrgUser = user && ["org_admin", "user"].includes(user.role);
+  const {
+    data: org,
+    isLoading: orgLoading,
+    error: orgError,
+  } = useOrganizationQuery(orgId || "");
+  const {
+    data: orgMembers,
+    isLoading: membersLoading,
+    error: membersError,
+  } = useUsersByOrganizationQuery(orgId || "", !!orgId && isOrgUser);
+  const {
+    data: orgApiKeys,
+    isLoading: apiKeysLoading,
+    error: apiKeysError,
+  } = useApiKeysQuery();
 
   if (isLoading) {
     return (
@@ -55,7 +76,6 @@ export default function DashboardPage() {
         heading="Dashboard"
         text="Welcome back! Here's an overview of your account."
       />
-
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -64,26 +84,34 @@ export default function DashboardPage() {
             <TabsTrigger value="admin">Admin</TabsTrigger>
           </UserRoleGate>
         </TabsList>
-
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Total Diagnoses
+                  {user?.role === "admin"
+                    ? "Total Diagnoses"
+                    : "Organization Diagnoses"}
                 </CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {user?.role === "admin" ? "1,284" : "24"}
+                  {user?.role === "admin"
+                    ? "1,284"
+                    : orgLoading
+                    ? "..."
+                    : org?.diagnosis_count ?? "0"}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  +{user?.role === "admin" ? "12%" : "20%"} from last month
+                  +
+                  {user?.role === "admin"
+                    ? "12%"
+                    : org?.diagnosis_growth ?? "0%"}{" "}
+                  from last month
                 </p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">API Calls</CardTitle>
@@ -91,14 +119,21 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {user?.role === "admin" ? "12,543" : "156"}
+                  {user?.role === "admin"
+                    ? "12,543"
+                    : orgLoading
+                    ? "..."
+                    : org?.api_call_count ?? "0"}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  +{user?.role === "admin" ? "18%" : "10%"} from last month
+                  +
+                  {user?.role === "admin"
+                    ? "18%"
+                    : org?.api_call_growth ?? "0%"}{" "}
+                  from last month
                 </p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">API Keys</CardTitle>
@@ -106,14 +141,18 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {user?.role === "admin" ? "48" : "1"}
+                  {user?.role === "admin"
+                    ? "48"
+                    : apiKeysLoading
+                    ? "..."
+                    : (orgApiKeys || []).filter((k) => k.organization === orgId)
+                        .length}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {user?.role === "admin" ? "+4 pending approval" : "Active"}
                 </p>
               </CardContent>
             </Card>
-
             <UserRoleGate allowedRoles={["admin"]}>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -130,7 +169,22 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </UserRoleGate>
-
+            <UserRoleGate allowedRoles={["org_admin", "user"]}>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Members</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {membersLoading ? "..." : orgMembers?.length ?? 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {membersLoading ? "" : "+0 new members this week"}
+                  </p>
+                </CardContent>
+              </Card>
+            </UserRoleGate>
             <UserRoleGate allowedRoles={["user"]}>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -151,7 +205,6 @@ export default function DashboardPage() {
               </Card>
             </UserRoleGate>
           </div>
-
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-4">
               <CardHeader>
@@ -175,7 +228,6 @@ export default function DashboardPage() {
             </Card>
           </div>
         </TabsContent>
-
         <TabsContent value="analytics" className="space-y-4">
           <Card className="col-span-4">
             <CardHeader>
@@ -189,7 +241,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <UserRoleGate allowedRoles={["admin"]}>
           <TabsContent value="admin" className="space-y-4">
             <Card>

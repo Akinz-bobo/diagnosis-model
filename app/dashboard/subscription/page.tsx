@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,11 +10,9 @@ import {
 } from "@/components/ui/card";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { DashboardShell } from "@/components/dashboard/shell";
-import { Check, X, CreditCard } from "lucide-react";
+import { Check, X, CreditCard, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentUser } from "@/lib/auth";
-import { getSubscription } from "@/lib/actions/subscriptions";
 import { SubscriptionForm } from "@/components/dashboard/subscription/subscription-form";
 import { PaymentMethodForm } from "@/components/dashboard/subscription/payment-method-form";
 import {
@@ -27,10 +26,53 @@ import {
 import { UserRoleGate } from "@/components/auth/user-role-gate";
 import { AdminSubscriptionView } from "@/components/dashboard/subscription/admin-subscription-view";
 import { UserSubscriptionView } from "@/components/dashboard/subscription/user-subscription-view";
+import { useCurrentUserQuery } from "@/hooks/use-user";
+import { useSubscriptionsQuery } from "@/hooks/use-subscription";
 
-export default async function SubscriptionPage() {
-  const user = await getCurrentUser();
-  const subscription = await getSubscription(user?.id || "");
+export default function SubscriptionPage() {
+  const {
+    data: user,
+    isLoading: userLoading,
+    isError: userError,
+  } = useCurrentUserQuery();
+  const {
+    data: subscriptions = [],
+    isLoading: subLoading,
+    isError: subError,
+  } = useSubscriptionsQuery();
+
+  // Find the current user's subscription (assuming one per user)
+  const subscription = subscriptions.find((s) => s.user_id === user?.id);
+
+  // Map UserProfile to User type expected by the views
+  const mappedUser = user
+    ? {
+        ...user,
+        name: user.full_name || user.email || "User",
+        image: user.image ?? undefined,
+      }
+    : null;
+
+  if (userLoading || subLoading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
+
+  if (userError || subError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <X className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-lg font-medium mb-1">
+          Failed to load subscription data
+        </p>
+        <p className="text-sm text-muted-foreground">Please try again later.</p>
+      </div>
+    );
+  }
 
   const plans = [
     {
@@ -47,7 +89,7 @@ export default async function SubscriptionPage() {
         { text: "Advanced analytics", included: false },
         { text: "Priority support", included: false },
       ],
-      current: subscription?.plan === "free",
+      current: subscription?.plan_name === "free",
     },
     {
       name: "Pro",
@@ -63,7 +105,7 @@ export default async function SubscriptionPage() {
         { text: "Advanced analytics", included: true },
         { text: "Custom integrations", included: false },
       ],
-      current: subscription?.plan === "pro",
+      current: subscription?.plan_name === "pro",
       popular: true,
     },
     {
@@ -80,18 +122,18 @@ export default async function SubscriptionPage() {
         { text: "Advanced analytics", included: true },
         { text: "Custom integrations", included: true },
       ],
-      current: subscription?.plan === "enterprise",
+      current: subscription?.plan_name === "enterprise",
     },
   ];
 
   return (
     <DashboardShell>
       <UserRoleGate allowedRoles={["admin"]}>
-        <AdminSubscriptionView user={user} />
+        <AdminSubscriptionView user={mappedUser} />
       </UserRoleGate>
 
       <UserRoleGate allowedRoles={["user", "org_admin"]}>
-        <UserSubscriptionView user={user} />
+        <UserSubscriptionView user={mappedUser} />
       </UserRoleGate>
 
       <div className="grid gap-6">
@@ -111,14 +153,16 @@ export default async function SubscriptionPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium capitalize">
-                          {subscription?.plan || "Free"} Plan
+                          {subscription?.plan_name || "Free"} Plan
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {subscription?.plan === "free"
+                          {subscription?.plan_name === "free"
                             ? "100 API calls per month"
-                            : subscription?.plan === "pro"
+                            : subscription?.plan_name === "pro"
                             ? "1,000 API calls per month"
-                            : "Unlimited API calls"}
+                            : subscription?.plan_name === "enterprise"
+                            ? "Unlimited API calls"
+                            : ""}
                         </p>
                       </div>
                       <Badge variant="outline" className="capitalize">
@@ -133,39 +177,23 @@ export default async function SubscriptionPage() {
                   <div className="rounded-lg border p-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        {subscription?.paymentMethod ? (
-                          <>
-                            <p className="font-medium">Visa ending in 4242</p>
-                            <p className="text-xs text-muted-foreground">
-                              Expires 12/2025
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="font-medium">No payment method</p>
-                            <p className="text-xs text-muted-foreground">
-                              Add a payment method to upgrade your plan
-                            </p>
-                          </>
-                        )}
+                        {/* Replace with real payment method info if available */}
+                        <p className="font-medium">No payment method</p>
+                        <p className="text-xs text-muted-foreground">
+                          Add a payment method to upgrade your plan
+                        </p>
                       </div>
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm">
-                            {subscription?.paymentMethod ? "Update" : "Add"}
+                            Add
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>
-                              {subscription?.paymentMethod
-                                ? "Update Payment Method"
-                                : "Add Payment Method"}
-                            </DialogTitle>
+                            <DialogTitle>Add Payment Method</DialogTitle>
                             <DialogDescription>
-                              {subscription?.paymentMethod
-                                ? "Update your payment method information."
-                                : "Add a payment method to upgrade your plan."}
+                              Add a payment method to upgrade your plan.
                             </DialogDescription>
                           </DialogHeader>
                           <PaymentMethodForm userId={user?.id || ""} />
@@ -179,7 +207,7 @@ export default async function SubscriptionPage() {
               <div className="space-y-2">
                 <h3 className="text-sm font-medium">Billing History</h3>
                 <div className="rounded-lg border">
-                  {subscription?.plan !== "free" ? (
+                  {subscription?.plan_name !== "free" ? (
                     <div className="divide-y">
                       <div className="flex items-center justify-between p-4">
                         <div>

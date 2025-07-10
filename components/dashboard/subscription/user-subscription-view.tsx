@@ -19,6 +19,9 @@ import type { User, UserSubscription, SubscriptionPlan } from "@/lib/types";
 import { UpgradePlanDialog } from "./upgrade-plan-dialog";
 import { SubscriptionHistory } from "./subscription-history";
 import { UsageMetrics } from "./usage-metrics";
+import { useUpdateSubscriptionMutation } from "@/hooks/use-subscription";
+import { toast } from "sonner";
+import { SubscriptionStatus } from "@/lib/api/subscription";
 
 interface UserSubscriptionViewProps {
   user: User | null;
@@ -30,6 +33,7 @@ export function UserSubscriptionView({ user }: UserSubscriptionViewProps) {
   );
   const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const updateSubscriptionMutation = useUpdateSubscriptionMutation();
 
   useEffect(() => {
     // Mock data - replace with actual API calls
@@ -344,8 +348,32 @@ export function UserSubscriptionView({ user }: UserSubscriptionViewProps) {
         currentPlan={subscription}
         availablePlans={availablePlans}
         onUpgrade={(newPlan) => {
-          // Handle upgrade logic
-          console.log("Upgrading to:", newPlan);
+          // Only update local state/UI after backend update
+          setSubscription((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  plan_name: newPlan.name,
+                  features: newPlan.features,
+                  allowed_calls: newPlan.allowed_calls,
+                  remaining_calls: newPlan.allowed_calls,
+                  status: SubscriptionStatus.active,
+                }
+              : prev
+          );
+        }}
+        onUpgradeRequest={async (newPlan) => {
+          if (!subscription) return;
+          await updateSubscriptionMutation.mutateAsync({
+            subscriptionId: subscription.id,
+            data: {
+              plan_name: newPlan.name,
+              features: newPlan.features,
+              allowed_calls: newPlan.allowed_calls,
+              remaining_calls: newPlan.allowed_calls,
+              status: SubscriptionStatus.active,
+            },
+          });
         }}
       />
     </DashboardShell>

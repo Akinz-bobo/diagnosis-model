@@ -1,5 +1,4 @@
 export interface DiagnosisResult {
-  id: string;
   diagnosis: {
     disease: string;
     confidence: number;
@@ -38,4 +37,5 @@ export interface DiagnosisResult {
   date: string;
   species: string;
   user_id: string;
+  id: string;
 }

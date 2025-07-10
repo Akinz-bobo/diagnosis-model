@@ -21,7 +21,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const user = session?.user;
-
+  // console.log(user);
   const isActive = (path: string) => pathname === path;
 
   const handleSignOut = async () => {
@@ -50,14 +50,7 @@ export default function Navbar() {
   };
 
   const getDashboardLink = () => {
-    switch (user?.role) {
-      case "admin":
-        return "/dashboard/super-admin";
-      case "org_admin":
-        return "/dashboard";
-      default:
-        return "/dashboard";
-    }
+    return "/dashboard";
   };
 
   return (
@@ -163,7 +156,7 @@ export default function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/profile">Profile</Link>
                 </DropdownMenuItem>
-                {(user.role === "admin" || user.role === "org_admin") && (
+                {["org_admin", "admin"].includes(user.role!) && (
                   <DropdownMenuItem asChild>
                     <Link href={getDashboardLink()}>Dashboard</Link>
                   </DropdownMenuItem>

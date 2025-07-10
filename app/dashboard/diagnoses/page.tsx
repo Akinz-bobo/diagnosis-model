@@ -1,17 +1,44 @@
+"use client";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { DataTable } from "@/components/ui/data-table";
 import { columns } from "@/components/dashboard/diagnoses/columns";
-import { getDiagnoses } from "@/lib/actions/diagnoses";
-import { getCurrentUser } from "@/lib/auth";
+import { getDiagnoses, getAllDiagnosesAdmin } from "@/lib/actions/diagnoses";
+import type { DiagnosisResult } from "@/lib/types";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { useCurrentUserQuery } from "@/hooks/use-user";
 
-export default async function DiagnosesPage() {
-  const user = await getCurrentUser();
-  const diagnoses = await getDiagnoses(user?.id);
+export default function DiagnosesPage() {
+  const user = useCurrentUserQuery();
+  const [diagnoses, setDiagnoses] = useState<DiagnosisResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
+  useEffect(() => {
+    async function fetchDiagnoses() {
+      setLoading(true);
+      setError("");
+      try {
+        let data: DiagnosisResult[] = [];
+        if (user.data?.role === "admin") {
+          data = await getAllDiagnosesAdmin();
+        } else if (user.data?.id) {
+          data = await getDiagnoses(user.data.id);
+        }
+        setDiagnoses(data);
+      } catch (err) {
+        setError("Failed to load diagnoses");
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (user.data) fetchDiagnoses();
+  }, [user.data]);
+
+  console.log("Diagnoses data:", diagnoses);
   return (
     <DashboardShell>
       <DashboardHeader
@@ -28,13 +55,15 @@ export default async function DiagnosesPage() {
           </Link>
         </Button>
       </DashboardHeader>
-
-      <DataTable
-        columns={columns}
-        data={diagnoses}
-        searchKey="disease"
-        searchPlaceholder="Search by disease..."
-      />
+      {loading ? (
+        <div className="p-8 text-center text-muted-foreground">
+          Loading diagnoses...
+        </div>
+      ) : error ? (
+        <div className="p-8 text-center text-destructive">{error}</div>
+      ) : (
+        <DataTable columns={columns} data={diagnoses} searchKey="disease" />
+      )}
     </DashboardShell>
   );
 }

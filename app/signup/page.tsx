@@ -29,6 +29,10 @@ const signupSchema = z.object({
   password: z
     .string()
     .min(8, { message: "Password must be at least 8 characters" }),
+  address: z.string().min(2, { message: "Address is required" }),
+  state: z.string().min(2, { message: "State is required" }),
+  profession: z.string().min(2, { message: "Profession is required" }),
+  gender: z.enum(["male", "female", "other"], { message: "Select a gender" }),
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -46,6 +50,10 @@ export default function SignupPage() {
       full_name: "",
       phone: "",
       password: "",
+      address: "",
+      state: "",
+      profession: "",
+      gender: undefined,
     },
   });
 
@@ -171,6 +179,66 @@ export default function SignupPage() {
                           placeholder="********"
                           {...field}
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="123 Main St" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State</FormLabel>
+                      <FormControl>
+                        <Input placeholder="State" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="profession"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Profession</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Veterinarian" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender</FormLabel>
+                      <FormControl>
+                        <select
+                          className="input w-full border rounded px-3 py-2"
+                          {...field}
+                        >
+                          <option value="">Select gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
