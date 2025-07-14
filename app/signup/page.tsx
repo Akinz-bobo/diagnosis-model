@@ -67,22 +67,22 @@ export default function SignupPage() {
         ...data,
         role: "user",
       };
+      console.log("Signup data:", signupData);
+      // const response = await fetch(
+      //   process.env.NEXT_PUBLIC_API_BASE_URL + "/api/v1/auth/signup",
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //     },
+      //     body: JSON.stringify(signupData),
+      //   }
+      // );
 
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_API_BASE_URL + "/api/v1/auth/signup",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(signupData),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to sign up");
-      }
+      // if (!response.ok) {
+      //   const errorData = await response.json();
+      //   throw new Error(errorData.message || "Failed to sign up");
+      // }
 
       toast({
         title: "Account created!",
@@ -90,7 +90,7 @@ export default function SignupPage() {
         variant: "default",
       });
 
-      router.push("/signin");
+      // router.push("/signin");
     } catch (error) {
       console.error("Signup error:", error);
       toast({

@@ -245,7 +245,6 @@ export function SuperAdminApiKeysTable() {
         columns={columns}
         data={apiKeys}
         searchKey="name"
-        searchPlaceholder="Search API keys..."
       />
 
       {/* Delete API Key Dialog */}

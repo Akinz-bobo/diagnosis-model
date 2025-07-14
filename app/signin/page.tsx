@@ -43,7 +43,7 @@ export default function SigninPage() {
 
   async function onSubmit(data: SigninFormValues) {
     setIsLoading(true);
-
+    console.log("Form submitted with data:", data);
     try {
       const res = await signIn("credentials", {
         redirect: false,

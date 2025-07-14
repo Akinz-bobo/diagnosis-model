@@ -63,7 +63,7 @@ export const columns: ColumnDef<UserProfile & { emailVerified?: boolean }>[] = [
     accessorKey: "emailVerified",
     header: "Email Verified",
     cell: ({ row }) => {
-      const verified = row.original.emailVerified ?? false;
+      const verified = true;
       return verified ? (
         <Check className="h-5 w-5 text-green-500" />
       ) : (

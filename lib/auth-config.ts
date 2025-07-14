@@ -66,6 +66,7 @@ export const authOptions: AuthOptions = {
           );
 
           const data = await res.json();
+          console.log("Authorize response:", data);
 
           if (!res.ok || !data?.user) return null;
 
