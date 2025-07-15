@@ -1,0 +1,152 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-config";
+
+// Simple rate limiting implementation
+const RATE_LIMIT_WINDOW = 10000; // 10 seconds window
+const MAX_REQUESTS_PER_WINDOW = 5; // 5 requests per window
+
+interface RateLimitInfo {
+  count: number;
+  firstRequest: number;
+}
+
+// Store rate limit info by client ID
+const clientRateLimits = new Map<string, RateLimitInfo>();
+
+// Keep track of invalid sessions to avoid infinite loops
+const sessionFailures = new Map<string, number>();
+
+export async function GET(request: Request) {
+  try {
+    // Get client identifier (IP or user agent if available)
+    const clientId = request.headers.get('x-forwarded-for') || 
+                     request.headers.get('user-agent') || 
+                     'default-client';
+    
+    // Apply rate limiting
+    const now = Date.now();
+    const rateLimit = clientRateLimits.get(clientId) || { count: 0, firstRequest: now };
+    
+    // Reset counter if outside the window
+    if (now - rateLimit.firstRequest > RATE_LIMIT_WINDOW) {
+      rateLimit.count = 1;
+      rateLimit.firstRequest = now;
+    } else {
+      rateLimit.count += 1;
+    }
+    
+    clientRateLimits.set(clientId, rateLimit);
+    
+    // Check if rate limit exceeded
+    if (rateLimit.count > MAX_REQUESTS_PER_WINDOW) {
+      return NextResponse.json({
+        error: "Rate limit exceeded. Please try again later.",
+        rateLimited: true
+      }, { 
+        status: 429,
+        headers: {
+          'Retry-After': `${Math.ceil((RATE_LIMIT_WINDOW - (now - rateLimit.firstRequest)) / 1000)}`
+        }
+      });
+    }
+    
+    // Get session from NextAuth
+    const session = await getServerSession(authOptions);
+    
+    // Check for recent session failures to prevent loops
+    const failureTimestamp = sessionFailures.get(clientId);
+    const failureCooldown = 5000; // 5 second cooldown after a session failure
+    
+    if (failureTimestamp && (now - failureTimestamp < failureCooldown)) {
+      return NextResponse.json({
+        error: "Authentication cooldown. Please try again shortly.",
+        cooldown: true,
+        requiresLogin: true
+      }, { status: 403 });
+    }
+    
+    // If no session, return 401 (not authenticated)
+    if (!session || !session.user) {
+      sessionFailures.set(clientId, now);
+      
+      return NextResponse.json({ 
+        error: "Not authenticated", 
+        requiresLogin: true 
+      }, { status: 401 });
+    }
+    
+    // If no access token in the session, we can't authenticate with the API
+    if (!session.accessToken) {
+      sessionFailures.set(clientId, now);
+      
+      return NextResponse.json({ 
+        error: "Missing access token", 
+        requiresLogin: true 
+      }, { status: 401 });
+    }
+  
+  try {
+    // Fetch user data from your API with the token
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/me`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        cache: "no-store",
+        next: { revalidate: 0 }
+      }
+    );
+    
+    // Handle API errors
+    if (!response.ok) {
+      // If unauthorized, clear the failure record and return 401
+      if (response.status === 401) {
+        sessionFailures.set(clientId, now);
+        
+        return NextResponse.json({
+          error: "Session expired or invalid",
+          requiresLogin: true
+        }, { status: 401 });
+      }
+      
+      // For other errors, return the status code from the API
+      const errorData = await response.json();
+      return NextResponse.json(
+        { error: errorData.message || "API error" },
+        { status: response.status }
+      );
+    }
+    
+    // Success - clear any failure records
+    sessionFailures.delete(clientId);
+    
+    // Get user data from the API response
+    const userData = await response.json();
+    
+    // Merge with session data to ensure all required fields
+    const enhancedUser = {
+      ...userData,
+      id: userData.id || session.user.id,
+      email: userData.email || session.user.email,
+      name: userData.full_name || userData.name || session.user.name,
+      role: userData.role || session.user.role,
+      image: userData.image || session.user.image,
+      organization_id: userData.organization_id || session.user.organization_id,
+    };
+    
+    return NextResponse.json(enhancedUser);
+    
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+    
+    return NextResponse.json(
+      { error: "Failed to fetch user data from API" },
+      { status: 500 }
+    );
+  }
+}

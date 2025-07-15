@@ -163,9 +163,19 @@ export async function signin(formData: FormData) {
 }
 
 export async function signout() {
-  // In a real app, this would call an API to invalidate the session
-  // For now, just redirect to the signin page
-  return { success: true, redirectTo: "/signin" };
+  try {
+    // Call the backend to invalidate the session if needed
+    await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(err => console.error('Error calling logout API:', err));
+    
+    // Return success - the client will handle the actual signout with NextAuth
+    return { success: true, redirectTo: "/signin" };
+  } catch (error) {
+    console.error("Error during signout:", error);
+    return { success: false, error: "Failed to sign out" };
+  }
 }
 
 export async function forgotPassword(formData: FormData) {

@@ -1,52 +1,111 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import type { NextMiddleware } from "next/server";
 
-export const middleware: NextMiddleware = async (req: NextRequest) => {
-  const pathname = req.nextUrl.pathname;
+// Define protected routes that require authentication
+const PROTECTED_ROUTES = [
+  "/dashboard",
+  "/profile",
+  "/diagnosis",
+  "/subscription",
+];
 
-  const token =
+// Define admin-only routes
+const ADMIN_ROUTES = [
+  "/dashboard/users",
+  "/dashboard/organizations",
+  "/dashboard/subscriptions",
+];
+
+// Define routes that should redirect logged-in users
+const AUTH_ROUTES = [
+  "/signin",
+  "/signup",
+  "/forgot-password",
+  "/reset-password"
+];
+
+// This function runs before withAuth middleware
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  
+  // Get the token from cookies (if it exists)
+  const token = 
     req.cookies.get("__Secure-next-auth.session-token")?.value ||
     req.cookies.get("next-auth.session-token")?.value;
-
-  const isAuthPage =
-    pathname.startsWith("/signin") || pathname.startsWith("/signup");
-  const isProtectedPage =
-    pathname.startsWith("/diagnosis") || pathname.startsWith("/admin");
-
-  // Unauthenticated user on protected page
-  if (!token && isProtectedPage) {
-    const loginUrl = new URL("/signin", req.url);
-    loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // Authenticated user trying to access auth pages
-  if (token && isAuthPage) {
+  
+  // Check if the current route is an authentication route
+  const isAuthRoute = AUTH_ROUTES.some(route => 
+    pathname.startsWith(route) || pathname === route
+  );
+  
+  // Redirect authenticated users away from auth pages
+  if (token && isAuthRoute) {
     return NextResponse.redirect(new URL("/diagnosis", req.url));
   }
-
+  
+  // For all other routes, let NextAuth withAuth handle the authentication
   return NextResponse.next();
-};
+}
 
-// For role-based access, use `withAuth` with custom callbacks
-export default withAuth(middleware, {
-  callbacks: {
-    authorized: ({ token, req }) => {
-      const pathname = req.nextUrl.pathname;
-
-      // If accessing admin routes, ensure user is ADMIN
-      if (pathname.startsWith("/admin")) {
-        return token?.role === "ADMIN";
-      }
-
-      // All other authenticated routes
-      return !!token;
-    },
+// Use withAuth for protected routes
+export default withAuth(
+  // Define a function for more granular control
+  function authMiddleware(req) {
+    // This will pass through since we've already done our custom redirects
+    return NextResponse.next();
   },
-});
+  {
+    callbacks: {
+      // This callback runs when NextAuth is determining if the user is authorized
+      authorized: ({ token, req }) => {
+        const { pathname } = req.nextUrl;
+        
+        // For admin routes, check if user has admin role
+        if (ADMIN_ROUTES.some(route => pathname.startsWith(route))) {
+          return token?.role === "admin" || token?.role === "super_admin";
+        }
+        
+        // For org admin routes
+        if (pathname.startsWith("/dashboard/organization")) {
+          return token?.role === "org_admin" || 
+                 token?.role === "admin" || 
+                 token?.role === "super_admin";
+        }
+        
+        // For general protected routes, just check if token exists
+        return !!token;
+      },
+    },
+    pages: {
+      signIn: '/signin',
+      error: '/signin',
+    },
+  }
+);
 
 export const config = {
-  matcher: ["/signin", "/signup", "/diagnosis", "/admin/:path*"],
+  // Apply this middleware to protected and auth routes
+  matcher: [
+    /*
+     * Match all protected routes:
+     * - Dashboard routes
+     * - Profile routes
+     * - Diagnosis routes
+     * - API routes that should be protected
+     * 
+     * And all auth routes:
+     * - Sign in
+     * - Sign up
+     * - Password reset
+     */
+    '/dashboard/:path*',
+    '/profile/:path*',
+    '/diagnosis/:path*',
+    '/subscription/:path*',
+    '/signin',
+    '/signup',
+    '/forgot-password',
+    '/reset-password/:path*'
+  ],
 };

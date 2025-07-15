@@ -6,7 +6,8 @@ import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import "./globals.css";
 import type { Metadata } from "next";
-import AuthProvider from "@/hooks/auth-context";
+import NextAuthProvider from "@/hooks/auth-context";
+import AuthEventListener from "@/components/auth/auth-event-listener";
 import { Toaster } from "sonner";
 
 const fontSans = FontSans({
@@ -18,8 +19,11 @@ export const metadata: Metadata = {
   title: "eVet - Veterinary Diagnosis Platform",
   description:
     "Advanced disease diagnosis using AI for veterinary professionals",
-  generator: "v0.dev",
+  generator: "eVet",
 };
+
+// Force dynamic rendering to ensure authentication works correctly
+export const dynamic = 'force-dynamic';
 
 export default function RootLayout({
   children,
@@ -29,15 +33,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${fontSans.variable}  font-sans min-h-screen flex flex-col`}
+        className={`${fontSans.variable} font-sans min-h-screen flex flex-col`}
       >
         <ThemeProvider attribute="class" defaultTheme="light">
-          <AuthProvider>
+          <NextAuthProvider>
+            <AuthEventListener />
             <Navbar />
             <main className="flex-1">{children}</main>
             <Footer />
             <Toaster richColors position="top-center" />
-          </AuthProvider>
+          </NextAuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -14,18 +14,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { useAuth } from "@/hooks/auth-context";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { data: session, status } = useSession();
-  const user = session?.user;
-  // console.log(user);
+  const { status } = useSession();
+  const { user, isLoading } = useCurrentUser();
+  const { logout } = useAuth();
+  
   const isActive = (path: string) => pathname === path;
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: "/" });
+    try {
+      await logout();
+      // We'll let auth context and router handle the redirection
+    } catch (error) {
+      console.error("Error during sign out:", error);
+      window.location.href = "/";
+    }
   };
 
   const getInitials = (name: string | null | undefined) => {
