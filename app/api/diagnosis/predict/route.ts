@@ -122,7 +122,7 @@ export async function POST(req: Request) {
     // Prepare headers
     const headers = new Headers();
     headers.append("Authorization", `Bearer ${session?.accessToken}`);
-    headers.append("api_key", "DzWQB1Eyqfgc3Re7W4uOSQFFbPWLqW2X");
+    headers.append("api_key", process.env.MASTERS_API_KEY || "");
     headers.append(
       "x-frontend-origin",
       process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"
