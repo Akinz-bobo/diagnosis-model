@@ -33,7 +33,9 @@ export default function Navbar() {
       // We'll let auth context and router handle the redirection
     } catch (error) {
       console.error("Error during sign out:", error);
-      window.location.href = "/";
+      // Fallback redirection that respects the environment
+      const basePath = window.location.origin;
+      window.location.href = `${basePath}/`;
     }
   };
 

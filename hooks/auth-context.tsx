@@ -171,10 +171,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Clear user state first for immediate UI feedback
       setUser(null);
       
-      // Then sign out from NextAuth with redirect to homepage
+      // Get the frontend URL from environment or fallback to current location
+      const frontendUrl = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : process.env.NEXT_PUBLIC_FRONTEND_URL;
+        
+      // Use dynamic callbackUrl based on environment
       await signOut({ 
         redirect: true,
-        callbackUrl: "/"
+        callbackUrl: `${frontendUrl}/`
       });
       
     } catch (error) {

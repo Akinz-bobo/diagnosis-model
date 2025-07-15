@@ -123,10 +123,17 @@ export async function POST(req: Request) {
     const headers = new Headers();
     headers.append("Authorization", `Bearer ${session?.accessToken}`);
     headers.append("api_key", process.env.MASTERS_API_KEY || "");
-    headers.append(
-      "x-frontend-origin",
-      process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"
-    );
+    
+    // Add required headers for origin and referer
+    headers.append("Origin", process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
+    headers.append("x-frontend-origin", process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
+    headers.append("Referer", process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
+    
+    // Log headers for debugging
+    console.log("Sending headers:", {
+      origin: process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000",
+      apiKey: process.env.MASTERS_API_KEY ? "Set" : "Not set"
+    });
 
     // Log outgoing FormData for debugging
     for (const [key, value] of backendFormData.entries()) {
