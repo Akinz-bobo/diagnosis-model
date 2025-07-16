@@ -1,6 +1,4 @@
-// app/api/diagnosis/route.ts
 import { auth } from "@/lib/auth";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 // Define expected form data fields
@@ -122,7 +120,7 @@ export async function POST(req: Request) {
     // Prepare headers
     const headers = new Headers();
     headers.append("Authorization", `Bearer ${session?.accessToken}`);
-    headers.append("api_key", process.env.MASTERS_API_KEY || "");
+    headers.append("api_key", process.env.NEXT_MASTERS_API_KEY || "");
     // Add required headers for origin and referer
     headers.append("Origin", process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
     headers.append("x-frontend-origin", process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
@@ -131,7 +129,7 @@ export async function POST(req: Request) {
     // Log headers for debugging
     console.log("Sending headers:", {
       origin: process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000",
-      apiKey: process.env.MASTERS_API_KEY 
+      apiKey: process.env.NEXT_MASTERS_API_KEY 
     });
 
     // Log outgoing FormData for debugging
