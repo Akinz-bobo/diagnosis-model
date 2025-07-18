@@ -1,0 +1,2 @@
+[setup.install]
+cmd=["npm instal --legacy-peer-deps"]
