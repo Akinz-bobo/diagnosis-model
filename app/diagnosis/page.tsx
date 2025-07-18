@@ -168,7 +168,7 @@ export default function DiagnosisPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1 py-12 px-4 md:px-6">
-        <div className="container mx-auto max-w-5xl">
+        <div className="px-4 md:container">
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-heading font-bold md:text-4xl">
               Disease Diagnosis
