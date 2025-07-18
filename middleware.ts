@@ -7,7 +7,6 @@ const PROTECTED_ROUTES = [
   "/dashboard",
   "/profile",
   "/diagnosis",
-  "/subscription",
 ];
 
 // Define admin-only routes
@@ -43,9 +42,19 @@ export function middleware(req: NextRequest) {
   if (token && isAuthRoute) {
     return NextResponse.redirect(new URL("/diagnosis", req.url));
   }
+
+  // Protect specific routes
+  if (PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
+    // If no token, redirect to sign-in page
+    if (!token) {
+      return NextResponse.redirect(new URL("/signin", req.url));
+    }
+  }
+    // If accessing admin routes, check for admin role
   
   // For all other routes, let NextAuth withAuth handle the authentication
   return NextResponse.next();
+
 }
 
 // Use withAuth for protected routes
