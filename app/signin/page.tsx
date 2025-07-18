@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
 // Define the form schema with Zod
 const signinSchema = z.object({
@@ -29,6 +30,7 @@ type SigninFormValues = z.infer<typeof signinSchema>;
 
 export default function SigninPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   // const { toast } = useToast();
 
@@ -51,8 +53,8 @@ export default function SigninPage() {
         password: data.password,
       });
 
-      console.log(res);
-      if (res?.error === "CredentialsSignin") {
+      console.log("Server response:",res);
+      if (res?.status === 401) {
         console.log("Worked!!!");
         toast.error("Unable to login. Invalid login credentials");
       }
@@ -110,11 +112,30 @@ export default function SigninPage() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="********"
-                          {...field}
-                        />
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="********"
+                            {...field}
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" aria-hidden="true" />
+                            ) : (
+                              <Eye className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            <span className="sr-only">
+                              {showPassword ? "Hide password" : "Show password"}
+                            </span>
+                          </Button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
