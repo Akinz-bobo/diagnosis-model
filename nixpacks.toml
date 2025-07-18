@@ -1,2 +1,2 @@
-[setup.install]
-cmd=["npm instal --legacy-peer-deps"]
+[phases.install]
+cmds = ['npm install --force']
