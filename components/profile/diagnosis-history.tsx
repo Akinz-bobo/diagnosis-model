@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { getDiagnoses } from "@/lib/actions/diagnoses";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useFilteredDiagnoses } from "@/hooks/use-diagnoses";
 import type { DiagnosisResult } from "@/lib/types";
 import {
   Calendar,
@@ -33,6 +34,7 @@ import {
   CheckCircle,
   Clock,
   Eye,
+  ChevronLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -40,47 +42,129 @@ import { FileText } from "lucide-react";
 import Image from "next/image";
 
 export function DiagnosisHistory() {
-  const { user } = useCurrentUser();
-  const [diagnoses, setDiagnoses] = useState<DiagnosisResult[]>([]);
-  const [loading, setLoading] = useState(true);
   const [view, setView] = useState("grid");
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
+  // Use the centralized diagnosis hook
+  const { 
+    diagnoses: filteredDiagnoses, 
+    allDiagnoses: diagnoses,
+    loading, 
+    error,
+    totalCount,
+    filteredCount 
+  } = useFilteredDiagnoses({
+    searchQuery,
+    filter,
+    sortBy: 'date',
+    sortOrder: 'desc'
+  });
+  // Pagination logic
+  const itemsPerPage = view === "grid" ? 4 : 6;
+  const totalPages = Math.ceil(filteredDiagnoses.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedDiagnoses = filteredDiagnoses.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filter or search changes
   useEffect(() => {
-    async function fetchDiagnoses() {
-      if (user?.id) {
-        try {
-          const data = await getDiagnoses(user.id);
-          setDiagnoses(data);
-        } catch (error) {
-          console.error("Error fetching diagnoses:", error);
-        } finally {
-          setLoading(false);
+    setCurrentPage(1);
+  }, [filter, searchQuery, view]);
+
+  // Adjust current page if it exceeds total pages after view change
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  console.log("Diagnosis: ", paginatedDiagnoses);
+
+  const PaginationControls = () => {
+    if (totalPages <= 1) return null;
+
+    const getPageNumbers = () => {
+      const pages = [];
+      const maxVisible = 5;
+
+      if (totalPages <= maxVisible) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        if (currentPage <= 3) {
+          for (let i = 1; i <= 4; i++) pages.push(i);
+          pages.push("...");
+          pages.push(totalPages);
+        } else if (currentPage >= totalPages - 2) {
+          pages.push(1);
+          pages.push("...");
+          for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+        } else {
+          pages.push(1);
+          pages.push("...");
+          for (let i = currentPage - 1; i <= currentPage + 1; i++)
+            pages.push(i);
+          pages.push("...");
+          pages.push(totalPages);
         }
       }
-    }
+      return pages;
+    };
 
-    fetchDiagnoses();
-  }, [user?.id]);
+    return (
+      <div className="flex items-center justify-center gap-2 mt-6">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+          className="h-9 px-3"
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Previous
+        </Button>
 
-  const filteredDiagnoses = diagnoses.filter((diagnosis) => {
-    if (filter !== "all" && diagnosis.species.toLowerCase() !== filter) {
-      return false;
-    }
+        <div className="flex items-center gap-1">
+          {getPageNumbers().map((page, index) => (
+            <div key={index}>
+              {page === "..." ? (
+                <span className="px-3 py-2 text-muted-foreground">...</span>
+              ) : (
+                <Button
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page as number)}
+                  className={`h-9 w-9 p-0 ${
+                    currentPage === page
+                      ? "bg-teal-600 hover:bg-teal-700 text-white"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  {page}
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
 
-    if (
-      searchQuery &&
-      !diagnosis.diagnosis.disease
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase())
-    ) {
-      return false;
-    }
-
-    return true;
-  });
-  console.log("Diagnosis: ", filteredDiagnoses);
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+          }
+          disabled={currentPage === totalPages}
+          className="h-9 px-3"
+        >
+          Next
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+    );
+  };
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 0.9) return "bg-green-500";
     if (confidence >= 0.7) return "bg-teal-500";
@@ -179,8 +263,16 @@ export function DiagnosisHistory() {
         <div className="flex items-center gap-2">
           <h2 className="text-2xl font-bold">Diagnosis History</h2>
           <Badge variant="outline" className="ml-2">
-            {filteredDiagnoses.length}
+            {filteredCount}
           </Badge>
+          {totalPages > 1 && (
+            <div className="hidden sm:flex items-center gap-1 text-sm text-muted-foreground ml-2">
+              <span>•</span>
+              <span>
+                Page {currentPage} of {totalPages}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="relative">
@@ -258,222 +350,290 @@ export function DiagnosisHistory() {
           </Tabs>
         </div>
       </div>
+
+      {filteredDiagnoses.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div>
+            Showing {startIndex + 1}-
+            {Math.min(endIndex, filteredDiagnoses.length)} of{" "}
+            {filteredDiagnoses.length} results
+          </div>
+          <div className="hidden sm:block">{itemsPerPage} per page</div>
+        </div>
+      )}
+
       <Tabs value={view} onValueChange={setView}>
         <TabsContent value="grid" className="mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredDiagnoses.map((diagnosis, index) => (
-              <motion.div
-                key={diagnosis.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg capitalize">
-                          {diagnosis.diagnosis.disease}
-                        </CardTitle>
-                        <CardDescription className="flex items-center mt-1 gap-2">
-                          <Badge
-                            variant="outline"
-                            className="bg-blue-50 text-blue-700 hover:bg-blue-50"
-                          >
-                            {diagnosis.species}
-                          </Badge>
-                          <div className="flex items-center text-muted-foreground text-xs">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {formatDate(diagnosis.date)}
-                          </div>
-                        </CardDescription>
-                      </div>
-                      <Badge
-                        className={`${getUrgencyColor(
-                          diagnosis.lesion_bedrock.urgency
-                        )} flex items-center gap-1`}
-                      >
-                        {getUrgencyIcon(diagnosis.lesion_bedrock.urgency)}
-                        {diagnosis.lesion_bedrock.urgency}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-1 text-sm">
-                        <span>Confidence</span>
-                        <span className="font-medium">
-                          {Math.round(diagnosis.diagnosis.confidence * 100)}%
-                        </span>
-                      </div>
-                      <Progress
-                        value={diagnosis.diagnosis.confidence * 100}
-                        className={`h-2 ${getConfidenceColor(
-                          diagnosis.diagnosis.confidence
-                        )}`}
-                      />
-                    </div>
-
-                    <div className="mb-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-medium">
-                          Images Analyzed:
-                        </span>
-                        <Badge variant="secondary">
-                          {diagnosis.image_analysis.processed_images.length}
-                        </Badge>
-                      </div>
-                      <div className="flex gap-1 overflow-hidden">
-                        {diagnosis.image_analysis.processed_images
-                          .slice(0, 3)
-                          .map((image, idx) => (
-                            <div
-                              key={idx}
-                              className="relative w-12 h-12 rounded border overflow-hidden"
-                            >
-                              <Image
-                                src={image.url || "/placeholder.svg"}
-                                alt={`Analysis ${idx + 1}`}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          ))}
-                        {diagnosis.image_analysis.processed_images.length >
-                          3 && (
-                          <div className="w-12 h-12 rounded border bg-muted flex items-center justify-center text-xs">
-                            +
-                            {diagnosis.image_analysis.processed_images.length -
-                              3}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <span className="text-sm font-medium">
-                        Lesions Identified:
-                      </span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {diagnosis.image_analysis.processed_images
-                          .flatMap((img) => img.lesions)
-                          .slice(0, 2)
-                          .map((lesion, idx) => (
-                            <Badge
-                              key={idx}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {lesion}
-                            </Badge>
-                          ))}
-                        {diagnosis.image_analysis.total_lesions_identified >
-                          2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +
-                            {diagnosis.image_analysis.total_lesions_identified -
-                              2}{" "}
-                            more
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {diagnosis.clinical_context.history_analysis.summary}
-                    </p>
-                  </CardContent>
-                  <CardFooter className="pt-0">
-                    <Button asChild variant="outline" className="w-full">
-                      <Link
-                        href={`/diagnosis/${diagnosis.id}`}
-                        className="flex items-center justify-center"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Full Analysis
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="list" className="mt-0">
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {filteredDiagnoses.map((diagnosis, index) => (
+          {paginatedDiagnoses.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="rounded-full bg-muted p-6 mb-4">
+                  <FileText className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">
+                  No diagnoses found
+                </h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  {searchQuery || filter !== "all"
+                    ? "Try adjusting your search criteria or filters."
+                    : "Start by submitting a new diagnosis request to see your history here."}
+                </p>
+                {!searchQuery && filter === "all" && (
+                  <Button asChild className="bg-teal-600 hover:bg-teal-700">
+                    <Link href="/diagnosis">New Diagnosis</Link>
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {paginatedDiagnoses.map((diagnosis, index) => (
                   <motion.div
                     key={diagnosis.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className="p-4 hover:bg-muted/50 transition-colors"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`w-2 h-12 rounded-full ${getConfidenceColor(
-                            diagnosis.diagnosis.confidence
-                          )}`}
-                        ></div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium capitalize">
+                    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg capitalize">
                               {diagnosis.diagnosis.disease}
-                            </h3>
-                            <Badge
-                              className={`${getUrgencyColor(
-                                diagnosis.lesion_bedrock.urgency
-                              )} flex items-center gap-1`}
-                            >
-                              {getUrgencyIcon(diagnosis.lesion_bedrock.urgency)}
-                              {diagnosis.lesion_bedrock.urgency}
-                            </Badge>
+                            </CardTitle>
+                            <CardDescription className="flex items-center mt-1 gap-2">
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-50 text-blue-700 hover:bg-blue-50"
+                              >
+                                {diagnosis.species}
+                              </Badge>
+                              <div className="flex items-center text-muted-foreground text-xs">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {formatDate(diagnosis.created_at)}
+                              </div>
+                            </CardDescription>
                           </div>
-                          <div className="flex items-center gap-3 mt-1">
-                            <Badge
-                              variant="outline"
-                              className="bg-blue-50 text-blue-700 hover:bg-blue-50"
-                            >
-                              {diagnosis.species}
-                            </Badge>
-                            <div className="flex items-center text-muted-foreground text-xs">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {formatDate(diagnosis.date)}
-                            </div>
-                            <div className="text-xs font-medium">
-                              Confidence:{" "}
+                          <Badge
+                            className={`${getUrgencyColor(
+                              diagnosis.lesion_bedrock.urgency
+                            )} flex items-center gap-1`}
+                          >
+                            {getUrgencyIcon(diagnosis.lesion_bedrock.urgency)}
+                            {diagnosis.lesion_bedrock.urgency}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="mb-4">
+                          <div className="flex justify-between items-center mb-1 text-sm">
+                            <span>Confidence</span>
+                            <span className="font-medium">
                               {Math.round(diagnosis.diagnosis.confidence * 100)}
                               %
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {
-                                diagnosis.image_analysis
-                                  .total_lesions_identified
-                              }{" "}
-                              lesions
-                            </div>
+                            </span>
+                          </div>
+                          <Progress
+                            value={diagnosis.diagnosis.confidence * 100}
+                            className={`h-2 ${getConfidenceColor(
+                              diagnosis.diagnosis.confidence
+                            )}`}
+                          />
+                        </div>
+
+                        <div className="mb-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm font-medium">
+                              Images Analyzed:
+                            </span>
+                            <Badge variant="secondary">
+                              {diagnosis.image_analysis.processed_images.length}
+                            </Badge>
+                          </div>
+                          <div className="flex gap-1 overflow-hidden">
+                            {diagnosis.image_analysis.processed_images
+                              .slice(0, 3)
+                              .map((image, idx) => (
+                                <div
+                                  key={idx}
+                                  className="relative w-12 h-12 rounded border overflow-hidden"
+                                >
+                                  <Image
+                                    src={image.url || "/placeholder.svg"}
+                                    alt={`Analysis ${idx + 1}`}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                              ))}
+                            {diagnosis.image_analysis.processed_images.length >
+                              3 && (
+                              <div className="w-12 h-12 rounded border bg-muted flex items-center justify-center text-xs">
+                                +
+                                {diagnosis.image_analysis.processed_images
+                                  .length - 3}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                      <Button asChild variant="ghost" size="sm">
-                        <Link href={`/diagnosis/${diagnosis.id}`}>
-                          <span className="sr-only sm:not-sr-only sm:mr-2">
-                            View Analysis
+
+                        <div className="mb-4">
+                          <span className="text-sm font-medium">
+                            Lesions Identified:
                           </span>
-                          <ChevronRight className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {diagnosis.image_analysis.processed_images
+                              .flatMap((img) => img.lesions)
+                              .slice(0, 2)
+                              .map((lesion, idx) => (
+                                <Badge
+                                  key={idx}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {lesion}
+                                </Badge>
+                              ))}
+                            {diagnosis.image_analysis.total_lesions_identified >
+                              2 && (
+                              <Badge variant="outline" className="text-xs">
+                                +
+                                {diagnosis.image_analysis
+                                  .total_lesions_identified - 2}{" "}
+                                more
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {diagnosis.clinical_context.history_analysis.summary}
+                        </p>
+                      </CardContent>
+                      <CardFooter className="pt-0">
+                        <Button asChild variant="outline" className="w-full">
+                          <Link
+                            href={`/diagnosis/${diagnosis.id}`}
+                            className="flex items-center justify-center"
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Full Analysis
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Link>
+                        </Button>
+                      </CardFooter>
+                    </Card>
                   </motion.div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+              {filteredDiagnoses.length > 0 && <PaginationControls />}
+            </>
+          )}
+        </TabsContent>{" "}
+        <TabsContent value="list" className="mt-0">
+          {paginatedDiagnoses.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="rounded-full bg-muted p-6 mb-4">
+                  <FileText className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">
+                  No diagnoses found
+                </h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  {searchQuery || filter !== "all"
+                    ? "Try adjusting your search criteria or filters."
+                    : "Start by submitting a new diagnosis request to see your history here."}
+                </p>
+                {!searchQuery && filter === "all" && (
+                  <Button asChild className="bg-teal-600 hover:bg-teal-700">
+                    <Link href="/diagnosis">New Diagnosis</Link>
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <CardContent className="p-0">
+                  <div className="divide-y">
+                    {paginatedDiagnoses.map((diagnosis, index) => (
+                      <motion.div
+                        key={diagnosis.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        className="p-4 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className={`w-2 h-12 rounded-full ${getConfidenceColor(
+                                diagnosis.diagnosis.confidence
+                              )}`}
+                            ></div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-medium capitalize">
+                                  {diagnosis.diagnosis.disease}
+                                </h3>
+                                <Badge
+                                  className={`${getUrgencyColor(
+                                    diagnosis.lesion_bedrock.urgency
+                                  )} flex items-center gap-1`}
+                                >
+                                  {getUrgencyIcon(
+                                    diagnosis.lesion_bedrock.urgency
+                                  )}
+                                  {diagnosis.lesion_bedrock.urgency}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-3 mt-1">
+                                <Badge
+                                  variant="outline"
+                                  className="bg-blue-50 text-blue-700 hover:bg-blue-50"
+                                >
+                                  {diagnosis.species}
+                                </Badge>
+                                <div className="flex items-center text-muted-foreground text-xs">
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  {formatDate(diagnosis.created_at)}
+                                </div>
+                                <div className="text-xs font-medium">
+                                  Confidence:{" "}
+                                  {Math.round(
+                                    diagnosis.diagnosis.confidence * 100
+                                  )}
+                                  %
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {
+                                    diagnosis.image_analysis
+                                      .total_lesions_identified
+                                  }{" "}
+                                  lesions
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <Button asChild variant="ghost" size="sm">
+                            <Link href={`/diagnosis/${diagnosis.id}`}>
+                              <span className="sr-only sm:not-sr-only sm:mr-2">
+                                View Analysis
+                              </span>
+                              <ChevronRight className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              {filteredDiagnoses.length > 0 && <PaginationControls />}
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>

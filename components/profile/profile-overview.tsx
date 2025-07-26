@@ -10,15 +10,17 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserQuery } from "@/hooks/use-user";
+import { useDiagnosisStats } from "@/hooks/use-diagnoses";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, FileText, Award, Clock } from "lucide-react";
+import { CalendarDays, FileText, Award, Clock, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 export function ProfileOverview() {
   const { data: user, isLoading, isError } = useCurrentUserQuery();
+  const { stats, loading: diagnosisLoading, error: diagnosisError } = useDiagnosisStats();
 
-  if (isLoading) {
+  if (isLoading || diagnosisLoading) {
     return (
       <Card>
         <CardHeader className="pb-4">
@@ -94,7 +96,19 @@ export function ProfileOverview() {
             <div>
               <p className="font-medium">Diagnoses</p>
               <p className="text-sm text-muted-foreground">
-                12 total diagnoses
+                {stats.total} total diagnoses
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="bg-green-100 p-2 rounded-full text-green-700">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-medium">Recent Activity</p>
+              <p className="text-sm text-muted-foreground">
+                {stats.recentCount} diagnoses in last 30 days
               </p>
             </div>
           </div>
