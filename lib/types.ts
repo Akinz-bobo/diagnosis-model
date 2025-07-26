@@ -76,7 +76,7 @@ export interface DiagnosisResult {
   };
   suggestions: string[];
   warnings: string | null;
-  date: string;
+  created_at: string;
   species: string;
   user_id: string;
 }

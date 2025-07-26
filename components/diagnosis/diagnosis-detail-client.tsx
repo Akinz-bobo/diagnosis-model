@@ -42,6 +42,7 @@ interface DiagnosisDetailClientProps {
 export function DiagnosisDetailClient({
   diagnosis,
 }: DiagnosisDetailClientProps) {
+  console.log(diagnosis);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   const getConfidenceColor = (confidence: number) => {
@@ -108,7 +109,7 @@ export function DiagnosisDetailClient({
               <div className="flex items-center gap-4 text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  {formatDate(diagnosis.date)}
+                  {formatDate(diagnosis.created_at)}
                 </div>
                 <Badge variant="outline" className="bg-blue-50 text-blue-700">
                   {diagnosis.species}
@@ -124,7 +125,7 @@ export function DiagnosisDetailClient({
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex items-center flex-wrap gap-2">
               <Button variant="outline" className="flex items-center gap-2">
                 <Download className="h-4 w-4" />
                 Download Report

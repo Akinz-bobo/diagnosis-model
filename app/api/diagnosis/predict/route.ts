@@ -50,8 +50,30 @@ export async function POST(req: Request) {
     // Validate history fields (basic check)
     const validationErrors: Record<string, string> = {};
     for (const field of REQUIRED_FIELDS) {
-      if (!historyObj[field]) {
-        validationErrors[field] = `${field} is required`;
+      if (field === "Total Deaths") {
+        // Allow Total Deaths to be 0 or any positive number
+        const totalDeaths = historyObj[field];
+        if (
+          totalDeaths === null ||
+          totalDeaths === undefined ||
+          totalDeaths === "" ||
+          (typeof totalDeaths === "string" && totalDeaths.trim() === "") ||
+          isNaN(Number(totalDeaths)) ||
+          Number(totalDeaths) < 0
+        ) {
+          validationErrors[
+            field
+          ] = `${field} must be a number greater than or equal to 0`;
+        }
+      } else {
+        // For all other fields, check if they exist and are not empty
+        if (
+          !historyObj[field] ||
+          (typeof historyObj[field] === "string" &&
+            historyObj[field].trim() === "")
+        ) {
+          validationErrors[field] = `${field} is required`;
+        }
       }
     }
     // Age: must be in format "<number> <unit>" and unit is weeks/months/years
@@ -80,7 +102,7 @@ export async function POST(req: Request) {
       validationErrors["Total Affected"] =
         "Total Affected cannot exceed Total Birds in Farm";
     }
-    if (!isNaN(totalBirds) && !isNaN(totalDeaths) && totalDeaths > totalBirds) {
+    if (!isNaN(totalBirds) && totalDeaths >= 0 && totalDeaths > totalBirds) {
       validationErrors["Total Deaths"] =
         "Total Deaths cannot exceed Total Birds in Farm";
     }
@@ -122,14 +144,23 @@ export async function POST(req: Request) {
     headers.append("Authorization", `Bearer ${session?.accessToken}`);
     headers.append("api_key", process.env.NEXT_MASTERS_API_KEY || "");
     // Add required headers for origin and referer
-    headers.append("Origin", process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
-    headers.append("x-frontend-origin", process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
-    headers.append("Referer", process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
-    
+    headers.append(
+      "Origin",
+      process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"
+    );
+    headers.append(
+      "x-frontend-origin",
+      process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"
+    );
+    headers.append(
+      "Referer",
+      process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"
+    );
+
     // Log headers for debugging
     console.log("Sending headers:", {
       origin: process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000",
-      apiKey: process.env.NEXT_MASTERS_API_KEY 
+      apiKey: process.env.NEXT_MASTERS_API_KEY,
     });
 
     // Log outgoing FormData for debugging
@@ -176,7 +207,7 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error: any) {
-    console.error("Diagnosis processing error:", error);
+    console.log("Diagnosis processing error:", error);
 
     return NextResponse.json(
       {

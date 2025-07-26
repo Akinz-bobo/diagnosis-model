@@ -135,13 +135,13 @@ export default function DiagnosisPage() {
 
       formData.append("history", JSON.stringify(data));
 
-      console.log("Making API request to /api/diagnosis/predict with data:")
+      console.log("Making API request to /api/diagnosis/predict with data:");
       const response = await fetch(`/api/diagnosis/predict`, {
         method: "POST",
         body: formData,
       });
 
-      console.log("*********API response status:************", response.status);
+      console.log("*********API response:************", response);
       if (!response.ok) {
         setFormError("Failed to get diagnosis. Please try again.");
         setIsLoading(false);

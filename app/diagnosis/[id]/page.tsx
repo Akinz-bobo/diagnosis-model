@@ -1,6 +1,5 @@
 import { getDiagnosis } from "@/lib/actions/diagnoses";
 import { DiagnosisDetailClient } from "@/components/diagnosis/diagnosis-detail-client";
-import { notFound } from "next/navigation";
 
 interface DiagnosisDetailPageProps {
   params: {
