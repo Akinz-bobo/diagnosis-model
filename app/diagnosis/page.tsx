@@ -32,7 +32,41 @@ import Image from "next/image";
 const historySchema = z
   .object({
     Species: z.literal("Chicken"),
-    Age: z.string().min(1, { message: "Age is required" }),
+    Age: z
+      .string()
+      .min(1, { message: "Age is required" })
+      .refine((val) => {
+        const trimmed = val.trim();
+        // Check if it's just a number without time unit
+        return !/^\d+$/.test(trimmed);
+      }, {
+        message: "Please include a time unit (e.g., 'days', 'weeks', 'months', 'years')"
+      })
+      .refine((val) => {
+        const trimmed = val.trim();
+        // Check if it's just a time unit without number
+        return !/^(day|days|week|weeks|month|months|year|years)$/i.test(trimmed);
+      }, {
+        message: "Please include a number before the time unit (e.g., '2 weeks', '3 months')"
+      })
+      .refine((val) => {
+        const trimmed = val.trim();
+        // Check for invalid abbreviations or formats
+        return !(
+          /^\d+\s*(wks|mths|yrs|d|w|m|y)$/i.test(trimmed) || 
+          /^\d+-\w+$/i.test(trimmed) ||
+          /^\d+\w+$/i.test(trimmed)
+        );
+      }, {
+        message: "Please use full words separated by space (e.g., '2 weeks' not '2wks' or '2-weeks')"
+      })
+      .refine((val) => {
+        const trimmed = val.trim();
+        // Final validation for correct format
+        return /^\d+\s+(day|days|week|weeks|month|months|year|years)$/i.test(trimmed);
+      }, {
+        message: "Format must be: number + space + time unit (e.g., '2 weeks', '3 months', '1 year')"
+      }),
     "Clinical Signs": z
       .string()
       .min(1, { message: "Clinical signs are required" }),
@@ -311,7 +345,7 @@ export default function DiagnosisPage() {
                         <FormItem>
                           <FormLabel>Age</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., 16 weeks" {...field} />
+                            <Input placeholder="e.g., 16 weeks, 3 months, 1 year" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
